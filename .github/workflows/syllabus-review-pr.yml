@@ -1,71 +1,48 @@
-name: Syllabus Review Report
+name: Syllabus Review PR
 
 on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
+  pull-requests: write
 
 jobs:
-  review-report:
+  prepare-review:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Generate review report
+      - name: Check syllabus draft
         run: |
           python - <<'PY'
           import json
           from pathlib import Path
 
           drafts = sorted(Path("data/drafts").glob("*.json"))
+
           if not drafts:
               raise SystemExit("No syllabus drafts found.")
 
-          report = {
-              "purpose": "Admin review only. Nothing is published.",
-              "drafts": []
-          }
-
           for path in drafts:
               data = json.loads(path.read_text(encoding="utf-8"))
-              report["drafts"].append({
-                  "file": str(path),
-                  "board": data.get("board"),
-                  "class": data.get("class"),
-                  "subject": data.get("subject"),
-                  "academicYear": data.get("academicYear"),
-                  "status": data.get("status"),
-                  "approved": data.get("approved"),
-                  "units": [
-                      {
-                          "unitNumber": unit.get("unitNumber"),
-                          "name": unit.get("name"),
-                          "chapters": [
-                              {
-                                  "chapterNumber": chapter.get("chapterNumber"),
-                                  "name": chapter.get("name"),
-                                  "verified": chapter.get("verified")
-                              }
-                              for chapter in unit.get("chapters", [])
-                          ]
-                      }
-                      for unit in data.get("units", [])
-                  ]
-              })
 
-          Path("syllabus-review-report.json").write_text(
-              json.dumps(report, indent=2, ensure_ascii=False) + "\n",
-              encoding="utf-8"
-          )
-          print("Review report generated. No syllabus was published.")
-          PY
+              if data.get("status") != "pending_review":
+                  raise SystemExit(
+                      f"{path} is not pending review."
+                  )
 
-      - name: Upload review report
-        uses: actions/upload-artifact@v4
-        with:
-          name: syllabus-admin-review-report
-          path: syllabus-review-report.json
-          retention-days: 14
-          
+              if data.get("approved") is not False:
+                  raise SystemExit(
+                      f"{path} must not be approved automatically."
+                  )
+
+              print(
+                  f"Review required: {path} — "
+                  f"{data.get('board')} Class {data.get('class')} "
+                  f"{data.get('subject')}"
+              )
+
+          print("Draft checks passed. No syllabus was published.")
