@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Study Tracker Syllabus",
+  "type": "object",
+  "required": [
+    "board",
+    "class",
+    "academicYear",
+    "source",
+    "status",
+    "subjects"
+  ],
+  "properties": {
+    "board": {
+      "type": "string"
+    },
+    "class": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 12
+    },
+    "academicYear": {
+      "type": "string"
+    },
+    "source": {
+      "type": "string",
+      "format": "uri"
+    },
+    "lastChecked": {
+      "type": ["string", "null"],
+      "format": "date-time"
+    },
+    "lastVerified": {
+      "type": ["string", "null"],
+      "format": "date-time"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "source_discovery",
+        "pending_verification",
+        "verified",
+        "update_available",
+        "error"
+      ]
+    },
+    "subjects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "chapters"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "source": {
+            "type": ["string", "null"]
+          },
+          "chapters": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["id", "title"],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "order": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
