@@ -7,7 +7,7 @@ on:
     - cron: "0 2 * * *"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   monitor:
@@ -18,41 +18,100 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Check official PDF fingerprints
+      - name: Compare official PDF fingerprints
+        id: compare
         shell: bash
         run: |
           python - <<'PY'
           import hashlib
+          import json
           import urllib.request
+          from pathlib import Path
 
           urls = {
               "Mathematics": "https://cbseacademic.nic.in/web_material/CurriculumMain27/SecPart1/Maths_SecP1X_2026-27.pdf",
               "Social Science": "https://cbseacademic.nic.in/web_material/CurriculumMain27/SecPart1/SocialScience_SecP1X_2026-27.pdf",
           }
 
+          path = Path("data/cbse-class-10-pdf-hashes.json")
+          path.parent.mkdir(parents=True, exist_ok=True)
+
+          if path.exists():
+              previous = json.loads(path.read_text(encoding="utf-8"))
+          else:
+              previous = {}
+
+          current = {}
+          changed = []
+
           for subject, url in urls.items():
-              print(f"\nChecking {subject}: {url}")
+              print(f"\nChecking {subject}")
               request = urllib.request.Request(
                   url,
                   headers={"User-Agent": "StudyTracker/1.0"}
               )
-              try:
-                  with urllib.request.urlopen(
-                      request, timeout=30
-                  ) as response:
-                      data = response.read()
 
-                  if not data.startswith(b"%PDF"):
-                      raise ValueError("Response is not a PDF")
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  data = response.read()
 
-                  fingerprint = hashlib.sha256(data).hexdigest()
-                  print(f"PDF reachable; bytes: {len(data)}")
-                  print(f"SHA-256: {fingerprint}")
+              if not data.startswith(b"%PDF"):
+                  raise ValueError(f"{subject}: response is not a PDF")
 
-              except Exception as exc:
-                  print(f"CHECK FAILED: {exc}")
-                  raise SystemExit(1)
+              fingerprint = hashlib.sha256(data).hexdigest()
+              current[subject] = {
+                  "url": url,
+                  "sha256": fingerprint,
+                  "bytes": len(data)
+              }
 
-          print("\nMonitoring complete. No syllabus JSON was changed.")
+              old = previous.get(subject, {}).get("sha256")
+
+              if old is None:
+                  print("BASELINE: No previous fingerprint saved.")
+              elif old != fingerprint:
+                  print("CHANGE DETECTED: PDF fingerprint differs.")
+                  changed.append(subject)
+              else:
+                  print("UNCHANGED: Fingerprint matches.")
+
+              print(f"SHA-256: {fingerprint}")
+              print(f"Bytes: {len(data)}")
+
+          if not previous:
+              print("\nFirst run: saving initial fingerprint baseline.")
+              path.write_text(
+                  json.dumps(current, indent=2) + "\n",
+                  encoding="utf-8"
+              )
+          elif changed:
+              print("\nReview required for changed PDFs:")
+              for subject in changed:
+                  print(f"- {subject}")
+              print("Saved baseline has NOT been overwritten.")
+              with open("changed-pdfs.txt", "w", encoding="utf-8") as f:
+                  f.write("\n".join(changed) + "\n")
+          else:
+              print("\nNo PDF fingerprint changes detected.")
           PY
+
+      - name: Upload change report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cbse-pdf-change-report
+          path: changed-pdfs.txt
+          if-no-files-found: ignore
+
+      - name: Save initial fingerprint baseline
+        if: success()
+        run: |
+          if [ -f data/cbse-class-10-pdf-hashes.json ]; then
+            git add data/cbse-class-10-pdf-hashes.json
+            if ! git diff --cached --quiet; then
+              git -c user.name="github-actions[bot]" \
+                  -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+                  commit -m "Save CBSE Class 10 PDF baseline"
+              git push
+            fi
+          fi
           
