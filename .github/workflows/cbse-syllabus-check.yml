@@ -1,0 +1,72 @@
+
+name: Check CBSE Syllabus Page
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "30 2 * * *"
+
+permissions:
+  contents: write
+
+jobs:
+  check-cbse:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check official CBSE curriculum page
+        id: check
+        run: |
+          python - <<'PY'
+          import hashlib
+          import os
+          import urllib.request
+          from pathlib import Path
+
+          url = "https://cbseacademic.nic.in/curriculum_2027.html"
+          req = urllib.request.Request(
+              url,
+              headers={"User-Agent": "StudyTracker-SyllabusChecker/1.0"}
+          )
+
+          with urllib.request.urlopen(req, timeout=30) as response:
+              html = response.read()
+
+          if response.status != 200 or len(html) < 1000:
+              raise RuntimeError("CBSE page response looks invalid")
+
+          digest = hashlib.sha256(html).hexdigest()
+          path = Path("data/cbse-class-10-page.sha256")
+          old = path.read_text().strip() if path.exists() else ""
+
+          path.parent.mkdir(parents=True, exist_ok=True)
+          path.write_text(digest + "\n")
+
+          changed = bool(old and old != digest)
+          with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+              out.write(f"changed={'true' if changed else 'false'}\n")
+
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as summary:
+              summary.write("# CBSE curriculum page check\n\n")
+              summary.write(f"- Source: {url}\n")
+              summary.write(f"- First baseline: {'No' if old else 'Yes'}\n")
+              summary.write(f"- Page content changed: {changed}\n")
+              summary.write(
+                  "\n**Note:** A page change does not prove the syllabus changed. "
+                  "The PDF must be checked separately.\n"
+              )
+          PY
+
+      - name: Save latest page fingerprint
+        run: |
+          if ! git diff --quiet -- data/cbse-class-10-page.sha256; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add data/cbse-class-10-page.sha256
+            git commit -m "Update CBSE curriculum page fingerprint"
+            git push
+          fi
+          
