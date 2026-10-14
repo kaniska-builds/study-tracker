@@ -1,0 +1,12 @@
+{
+  "Mathematics": {
+    "url": "https://cbseacademic.nic.in/web_material/CurriculumMain27/SecPart1/Maths_SecP1X_2026-27.pdf",
+    "sha256": "d773e7c12b99e0bd498067e2b8268c76d0496bf9cad1c9e41c8652ab68b412a5",
+    "bytes": 270782
+  },
+  "Social Science": {
+    "url": "https://cbseacademic.nic.in/web_material/CurriculumMain27/SecPart1/SocialScience_SecP1X_2026-27.pdf",
+    "sha256": "99d21fd5e2fdddb990797eec5450c31098438c6a7ecc4406fce401e5e88083eb",
+    "bytes": 524927
+  }
+}
