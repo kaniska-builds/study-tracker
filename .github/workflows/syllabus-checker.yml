@@ -1,7 +1,7 @@
 name: Syllabus Checker
 
-on:
-  workflow_dispatch
+"on":
+  workflow_dispatch:
 
 jobs:
   check:
