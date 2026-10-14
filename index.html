@@ -1338,6 +1338,36 @@ function loadAutomaticSyllabus() {
 
   let added = 0;
   let updated = 0;
+    // Remove obsolete Class 6 CBSE English chapters only.
+  if (board === "CBSE" && level === "Class 6") {
+    const englishSubject = chapterData.subjects.find(s =>
+      s.board === board &&
+      s.level === level &&
+      s.name.trim().toLowerCase() === "english"
+    );
+
+    if (englishSubject) {
+      const obsoleteChapters = [
+        "The Tinkling Bells",
+        "The King's Choice",
+        "The Unhappy Tree"
+      ];
+
+      const obsoleteNames = new Set(
+        obsoleteChapters.map(name => name.toLowerCase())
+      );
+
+      const beforeCount = chapterData.chapters.length;
+
+      chapterData.chapters = chapterData.chapters.filter(c =>
+        c.subjectId !== englishSubject.id ||
+        !obsoleteNames.has(c.name.trim().toLowerCase())
+      );
+
+      const removed = beforeCount - chapterData.chapters.length;
+      console.log("Obsolete Class 6 English chapters removed:", removed);
+    }
+  }
 
   Object.entries(subjects).forEach(([subjectName, chapterNames]) => {
     let subject = chapterData.subjects.find(s =>
