@@ -950,6 +950,39 @@ try {
 } catch (e) {
   chapterData = { subjects: [], chapters: [] };
 }
+  
+/* Remove legacy Class 7 English unit names */
+const oldEnglishUnits = new Set([
+  "Learning Together",
+  "Wit and Humour",
+  "Dreams and Discoveries",
+  "Travel and Adventure",
+  "Bravehearts"
+]);
+
+const class7EnglishIds = new Set(
+  chapterData.subjects
+    .filter(s =>
+      s.board === "CBSE" &&
+      s.level === "Class 7" &&
+      s.name === "English"
+    )
+    .map(s => s.id)
+);
+
+const beforeCleanup = chapterData.chapters.length;
+
+chapterData.chapters = chapterData.chapters.filter(c =>
+  !(
+    class7EnglishIds.has(c.subjectId) &&
+    oldEnglishUnits.has(c.name)
+  )
+);
+
+if (chapterData.chapters.length !== beforeCleanup) {
+  saveChapterData();
+}
+  
 
 function saveChapterData() {
   localStorage.setItem(CHAPTER_KEY, JSON.stringify(chapterData));
