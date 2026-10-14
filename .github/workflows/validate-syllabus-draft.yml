@@ -1,0 +1,77 @@
+name: Validate Syllabus Draft
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "data/drafts/**"
+      - ".github/workflows/validate-syllabus-draft.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Validate draft JSON
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          files = sorted(Path("data/drafts").glob("*.json"))
+          if not files:
+              raise SystemExit("No syllabus draft JSON files found.")
+
+          errors = []
+
+          for path in files:
+              try:
+                  data = json.loads(path.read_text(encoding="utf-8"))
+              except Exception as exc:
+                  errors.append(f"{path}: invalid JSON: {exc}")
+                  continue
+
+              if data.get("status") != "pending_review":
+                  errors.append(f"{path}: status must be pending_review")
+
+              if data.get("approved") is not False:
+                  errors.append(f"{path}: approved must remain false")
+
+              units = data.get("units")
+              if not isinstance(units, list) or not units:
+                  errors.append(f"{path}: units must be a non-empty list")
+                  continue
+
+              for unit in units:
+                  if not isinstance(unit.get("chapters"), list):
+                      errors.append(f"{path}: unit chapters must be a list")
+                      continue
+
+                  for chapter in unit["chapters"]:
+                      if not chapter.get("name"):
+                          errors.append(f"{path}: chapter name is missing")
+                      if chapter.get("verified") is not False:
+                          errors.append(
+                              f"{path}: unreviewed chapters must remain unverified"
+                          )
+
+              if not errors:
+                  print(f"VALID DRAFT: {path}")
+
+          if errors:
+              print("\n".join(errors))
+              raise SystemExit("Draft validation failed.")
+
+          print("Validation passed. No syllabus was published.")
+          PY
+          
