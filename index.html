@@ -1126,6 +1126,83 @@ document.addEventListener("click", e => {
 });
 
 renderChapterTracker();
+
+/* Automatic CBSE syllabus: Class 6 Science */
+const AUTO_SYLLABUS = {
+  CBSE: {
+    "6": {
+      Science: [
+        "The Wonderful World of Science",
+        "Diversity in the Living World",
+        "Mindful Eating: A Path to a Healthy Body",
+        "Exploring Magnets",
+        "Measurement of Length and Motion",
+        "Materials Around Us",
+        "Temperature and its Measurement",
+        "A Journey through States of Water",
+        "Methods of Separation in Everyday Life",
+        "Living Creatures: Exploring their Characteristics",
+        "Nature's Treasures",
+        "Beyond Earth"
+      ]
+    }
+  }
+};
+
+function loadAutomaticSyllabus() {
+  const board = $("chapterBoard").value;
+  const level = $("chapterClass").value;
+  const subjects = AUTO_SYLLABUS[board]?.[level];
+
+  if (!subjects) return;
+
+  let added = 0;
+
+  Object.entries(subjects).forEach(([subjectName, chapterNames]) => {
+    let subject = chapterData.subjects.find(s =>
+      s.board === board &&
+      s.level === level &&
+      s.name.toLowerCase() === subjectName.toLowerCase()
+    );
+
+    if (!subject) {
+      subject = {
+        id: uid(),
+        board,
+        level,
+        name: subjectName
+      };
+      chapterData.subjects.push(subject);
+    }
+
+    chapterNames.forEach(name => {
+      const exists = chapterData.chapters.some(c =>
+        c.subjectId === subject.id &&
+        c.name.toLowerCase() === name.toLowerCase()
+      );
+
+      if (!exists) {
+        chapterData.chapters.push({
+          id: uid(),
+          subjectId: subject.id,
+          name,
+          done: false
+        });
+        added++;
+      }
+    });
+  });
+
+  saveChapterData();
+  renderChapterTracker();
+  alert(added
+    ? added + " syllabus chapters added successfully!"
+    : "Syllabus chapters are already added.");
+}
+
+$("chapterBoard").addEventListener("change", loadAutomaticSyllabus);
+$("chapterClass").addEventListener("change", loadAutomaticSyllabus);
+  
 /* Focus timer */
 let remaining=25*60, interval=null;
 
