@@ -1,29 +1,27 @@
 name: Syllabus Checker
 
 on:
-workflow_dispatch:
-schedule:
-- cron: "30 3 * * 1"
+  workflow_dispatch:
+  schedule:
+    - cron: '30 3 * * 1'
 
 permissions:
-contents: read
+  contents: read
 
 jobs:
-check:
-runs-on: ubuntu-latest
-steps:
-- name: Checkout repository
-uses: actions/checkout@v4
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-  - name: Check syllabus configuration
-    run: |
-      echo "Syllabus Checker started."
-      echo "Checking whether the Study Tracker has a syllabus configuration file..."
-      if [ -f index.html ]; then
-        echo "SUCCESS: index.html exists."
-      else
-        echo "ERROR: index.html was not found."
-        exit 1
-      fi
-      echo "This first version checks the website file only."
-      echo "Official syllabus comparison is not implemented yet."
+      - name: Check website file
+        run: |
+          echo "Syllabus Checker started."
+          if [ -f index.html ]; then
+            echo "SUCCESS: index.html exists."
+          else
+            echo "ERROR: index.html was not found."
+            exit 1
+          fi
+          echo "Official syllabus comparison is not implemented yet."
