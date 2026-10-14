@@ -17,6 +17,3 @@ jobs:
 
       - name: Verify website file
         run: test -f index.html
-
-      - name: Report checker status
-        run: echo "Basic file check passed. Official syllabus comparison is not implemented yet."
