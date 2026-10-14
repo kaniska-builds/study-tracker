@@ -1,3 +1,4 @@
+
 name: Syllabus Checker
 
 on:
@@ -8,16 +9,50 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+
     steps:
       - name: Check official syllabus pages
+        shell: bash
         run: |
-          set -eu
-          curl -fsSL --max-time 30 \
-            https://cbseacademic.nic.in/curriculum_2027.html \
-            -o /tmp/cbse.html
-          curl -fsSL --max-time 30 \
-            https://cisce.org/ -o /tmp/cisce.html
-          curl -fsSL --max-time 30 \
-            https://chseodisha.nic.in/syllabus/ \
-            -o /tmp/chse.html
-          echo "All three official pages responded successfully."
+          set -u
+
+          check_url() {
+            name="$1"
+            url="$2"
+            output="$3"
+
+            echo "Checking $name..."
+            if curl -A "Mozilla/5.0 (compatible; SyllabusChecker/1.0)" \
+              -fsSL --max-time 30 \
+              "$url" -o "$output"; then
+              echo "PASS: $name responded successfully."
+            else
+              status=$?
+              echo "::warning title=$name check failed::Request failed with curl exit code $status"
+              echo "FAIL: $name could not be fetched."
+              return 1
+            fi
+          }
+
+          failures=0
+
+          check_url "CBSE" \
+            "https://cbseacademic.nic.in/curriculum_2027.html" \
+            "/tmp/cbse.html" || failures=$((failures + 1))
+
+          check_url "CISCE" \
+            "https://cisce.org/" \
+            "/tmp/cisce.html" || failures=$((failures + 1))
+
+          check_url "CHSE Odisha" \
+            "https://chseodisha.nic.in/syllabus/" \
+            "/tmp/chse.html" || failures=$((failures + 1))
+
+          if [ "$failures" -gt 0 ]; then
+            echo "::error::$failures official page check(s) failed."
+            exit 1
+          fi
+
+          echo "SUCCESS: All three official pages were fetched."
+          
