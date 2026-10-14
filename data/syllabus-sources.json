@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "lastUpdated": null,
+  "boards": [
+    {
+      "id": "CBSE",
+      "name": "Central Board of Secondary Education",
+      "officialWebsite": "https://cbseacademic.nic.in/",
+      "classesSupported": [],
+      "status": "source_discovery"
+    },
+    {
+      "id": "CISCE",
+      "name": "Council for the Indian School Certificate Examinations",
+      "officialWebsite": "https://cisce.org/",
+      "classesSupported": [],
+      "status": "source_discovery"
+    },
+    {
+      "id": "CHSE_ODISHA",
+      "name": "Council of Higher Secondary Education, Odisha",
+      "officialWebsite": "https://chseodisha.nic.in/",
+      "classesSupported": [],
+      "status": "source_discovery"
+    },
+    {
+      "id": "BSE_ODISHA",
+      "name": "Board of Secondary Education, Odisha",
+      "officialWebsite": "https://bseodisha.ac.in/",
+      "classesSupported": [],
+      "status": "source_discovery"
+    }
+  ]
+}
