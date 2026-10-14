@@ -1,0 +1,68 @@
+name: Check CBSE Syllabus PDFs
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "45 2 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  check-pdfs:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check official CBSE curriculum page
+        run: |
+          python - <<'PY'
+          import urllib.request
+          from html.parser import HTMLParser
+          from urllib.parse import urljoin
+
+          PAGE = "https://cbseacademic.nic.in/curriculum_2027.html"
+
+          class LinkParser(HTMLParser):
+              def __init__(self):
+                  super().__init__()
+                  self.links = []
+
+              def handle_starttag(self, tag, attrs):
+                  if tag.lower() == "a":
+                      href = dict(attrs).get("href", "")
+                      if href:
+                          self.links.append(href)
+
+          request = urllib.request.Request(
+              PAGE,
+              headers={"User-Agent": "StudyTracker-SyllabusChecker/1.0"}
+          )
+
+          with urllib.request.urlopen(request, timeout=30) as response:
+              html = response.read().decode("utf-8", errors="replace")
+
+          parser = LinkParser()
+          parser.feed(html)
+
+          pdfs = sorted({
+              urljoin(PAGE, link)
+              for link in parser.links
+              if ".pdf" in link.lower()
+              and "cbseacademic.nic.in" in urljoin(PAGE, link).lower()
+          })
+
+          print("Official curriculum page checked.")
+          print(f"CBSE PDF links found: {len(pdfs)}")
+
+          for pdf in pdfs:
+              print(pdf)
+
+          if not pdfs:
+              print(
+                  "No matching PDF links found. "
+                  "The page structure may have changed; review manually."
+              )
+          PY
