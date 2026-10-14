@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -189,6 +188,63 @@ border:0;background:transparent;color:var(--muted);font-size:10px;padding:5px 1p
 .form-row .input{flex-basis:100%}
 .subject-cards{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
+
+/* Chapter Tracker */
+.chapter-filters{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:12px;
+  margin-bottom:18px
+}
+.chapter-progress{
+  height:10px;
+  border-radius:20px;
+  background:var(--panel2);
+  overflow:hidden;
+  margin:12px 0
+}
+.chapter-progress-fill{
+  height:100%;
+  width:0;
+  background:linear-gradient(90deg,var(--accent),var(--cyan));
+  transition:width .25s
+}
+.chapter-subject{
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:14px;
+  background:var(--panel);
+  margin-bottom:12px
+}
+.chapter-row{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:10px 0;
+  border-bottom:1px solid var(--border)
+}
+.chapter-row:last-child{border-bottom:0}
+.chapter-row input{accent-color:var(--accent)}
+.chapter-row label{
+  flex:1;
+  font-size:14px;
+  color:var(--text);
+  overflow-wrap:anywhere
+}
+.chapter-row label.is-complete{
+  text-decoration:line-through;
+  color:var(--muted)
+}
+.chapter-actions{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-top:12px
+}
+@media(max-width:650px){
+  .chapter-filters{grid-template-columns:1fr}
+  }
+  
 </style>
 </head>
 <body>
@@ -211,6 +267,9 @@ border:0;background:transparent;color:var(--muted);font-size:10px;padding:5px 1p
     <button class="nav active" data-page="dashboard"><span class="emoji">⌂</span>Dashboard</button>
     <button class="nav" data-page="tasks"><span class="emoji">✓</span>My Tasks</button>
     <button class="nav" data-page="subjects"><span class="emoji">▤</span>Subjects</button>
+    
+<button class="nav" data-page="chapters"><span class="emoji">📚</span>Chapters</button>
+    
     <button class="nav" data-page="timetable"><span class="emoji">▦</span>Timetable</button>
     <button class="nav" data-page="focus"><span class="emoji">◷</span>Focus Timer</button>
     <button class="nav" data-page="notes"><span class="emoji">✎</span>My Notes</button>
@@ -424,6 +483,129 @@ border:0;background:transparent;color:var(--muted);font-size:10px;padding:5px 1p
       </div>
     </section>
 
+    <section class="page" id="page-chapters">
+      <div class="page-head">
+        <div>
+          <h1>Chapter Tracker 📚</h1>
+          <p class="muted">Track every chapter, one step at a time.</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Choose your syllabus</h2></div>
+
+        <div class="chapter-filters">
+          <div class="field">
+            <label for="chapterBoard">Board</label>
+            <select class="input" id="chapterBoard">
+              <option value="CBSE">CBSE</option>
+              <option value="ICSE">ICSE</option>
+              <option value="ISC">ISC</option>
+              <option value="CHSE Odisha">CHSE Odisha</option>
+              <option value="BSE Odisha">BSE Odisha</option>
+              <option value="Maharashtra State Board">Maharashtra State Board</option>
+              <option value="West Bengal Board">West Bengal Board</option>
+              <option value="UP Board">UP Board</option>
+              <option value="Bihar Board">Bihar Board</option>
+              <option value="Tamil Nadu Board">Tamil Nadu Board</option>
+              <option value="Karnataka Board">Karnataka Board</option>
+              <option value="Kerala Board">Kerala Board</option>
+              <option value="Andhra Pradesh Board">Andhra Pradesh Board</option>
+              <option value="Telangana Board">Telangana Board</option>
+              <option value="Punjab Board">Punjab Board</option>
+              <option value="Rajasthan Board">Rajasthan Board</option>
+              <option value="Haryana Board">Haryana Board</option>
+              <option value="Gujarat Board">Gujarat Board</option>
+              <option value="Other State Board">Other State Board</option>
+              <option value="Other International Board">Other International Board</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="chapterClass">Class / Level</label>
+            <select class="input" id="chapterClass">
+              <option value="Class 1">Class 1</option>
+              <option value="Class 2">Class 2</option>
+              <option value="Class 3">Class 3</option>
+              <option value="Class 4">Class 4</option>
+              <option value="Class 5">Class 5</option>
+              <option value="Class 6">Class 6</option>
+              <option value="Class 7">Class 7</option>
+              <option value="Class 8">Class 8</option>
+              <option value="Class 9">Class 9</option>
+              <option value="Class 10" selected>Class 10</option>
+              <option value="Class 11">Class 11</option>
+              <option value="Class 12">Class 12</option>
+              <option value="College">College / Other</option>
+            </select>
+          </div>
+        </div>
+
+        <p class="muted small">Select a board and class, then create a subject list for that syllabus.</p>
+      </div>
+
+      <div class="grid stats section-gap">
+        <div class="card">
+          <div class="stat-label">Total chapters</div>
+          <div class="stat-value" id="chapterTotal">0</div>
+        </div>
+        <div class="card">
+          <div class="stat-label">Completed</div>
+          <div class="stat-value" id="chapterCompleted">0</div>
+        </div>
+        <div class="card">
+          <div class="stat-label">Remaining</div>
+          <div class="stat-value" id="chapterRemaining">0</div>
+        </div>
+        <div class="card">
+          <div class="stat-label">Progress</div>
+          <div class="stat-value" id="chapterPercent">0%</div>
+        </div>
+      </div>
+
+      <div class="card section-gap">
+        <div class="card-head"><h2>Add a subject</h2></div>
+        <form id="chapterSubjectForm">
+          <div class="field">
+            <label for="chapterSubjectName">Subject name</label>
+            <input class="input" id="chapterSubjectName" placeholder="e.g. Mathematics, Physics, English" required maxlength="80">
+          </div>
+          <button class="btn" type="submit">＋ Add subject</button>
+        </form>
+      </div>
+
+      <div class="card section-gap">
+        <div class="card-head"><h2>Add a chapter</h2></div>
+        <form id="chapterForm">
+          <div class="field">
+            <label for="chapterSubjectSelect">Subject</label>
+            <select class="input" id="chapterSubjectSelect" required>
+              <option value="">Add a subject first</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="chapterName">Chapter name</label>
+            <input class="input" id="chapterName" placeholder="e.g. Real Numbers" required maxlength="160">
+          </div>
+          <button class="btn" type="submit">＋ Add chapter</button>
+        </form>
+      </div>
+
+      <div class="card section-gap">
+        <div class="card-head">
+          <h2>My chapters</h2>
+          <button class="icon-btn" id="chapterSelectAll">Select all</button>
+        </div>
+        <div class="chapter-progress">
+          <div class="chapter-progress-fill" id="chapterProgressFill"></div>
+        </div>
+        <p class="muted small" id="chapterProgressMessage">Add subjects and chapters to begin tracking.</p>
+        <div id="chapterSubjectsList">
+          <div class="empty">Your subject-wise chapters will appear here.</div>
+        </div>
+      </div>
+    </section>
+    
     <section class="page" id="page-settings">
       <div class="page-head">
         <div><h1>Settings</h1><p class="muted">Personalize your study experience.</p></div>
@@ -458,6 +640,7 @@ border:0;background:transparent;color:var(--muted);font-size:10px;padding:5px 1p
   <button class="active" data-page="dashboard"><span>⌂</span>Home</button>
   <button data-page="tasks"><span>✓</span>Tasks</button>
   <button data-page="subjects"><span>▤</span>Subjects</button>
+  <button data-page="chapters"><span>📚</span>Chapters</button>
   <button data-page="focus"><span>◷</span>Focus</button>
   <button data-page="settings"><span>⚙</span>Settings</button>
 </nav>
@@ -756,7 +939,193 @@ $("resetApp").addEventListener("click",()=>{
 
 setTheme(data.theme);
 renderAll();
+/* Chapter Tracker */
+const CHAPTER_KEY = "studyTrackerChaptersV1";
+let chapterData = { subjects: [], chapters: [] };
 
+try {
+  const saved = JSON.parse(localStorage.getItem(CHAPTER_KEY) || "{}");
+  chapterData.subjects = Array.isArray(saved.subjects) ? saved.subjects : [];
+  chapterData.chapters = Array.isArray(saved.chapters) ? saved.chapters : [];
+} catch (e) {
+  chapterData = { subjects: [], chapters: [] };
+}
+
+function saveChapterData() {
+  localStorage.setItem(CHAPTER_KEY, JSON.stringify(chapterData));
+}
+
+function scopedChapterSubjects() {
+  return chapterData.subjects.filter(s =>
+    s.board === $("chapterBoard").value &&
+    s.level === $("chapterClass").value
+  );
+}
+
+function scopedChapters() {
+  const ids = scopedChapterSubjects().map(s => s.id);
+  return chapterData.chapters.filter(c => ids.includes(c.subjectId));
+}
+
+function renderChapterTracker() {
+  const subjects = scopedChapterSubjects();
+  const chapters = scopedChapters();
+  const completed = chapters.filter(c => c.done).length;
+  const total = chapters.length;
+  const percent = total ? Math.round(completed / total * 100) : 0;
+
+  $("chapterTotal").textContent = total;
+  $("chapterCompleted").textContent = completed;
+  $("chapterRemaining").textContent = total - completed;
+  $("chapterPercent").textContent = percent + "%";
+  $("chapterProgressFill").style.width = percent + "%";
+  $("chapterProgressMessage").textContent = total
+    ? completed + " of " + total + " chapters completed."
+    : "Add subjects and chapters to begin tracking.";
+
+  const oldSelection = $("chapterSubjectSelect").value;
+  $("chapterSubjectSelect").innerHTML = subjects.length
+    ? subjects.map(s =>
+        '<option value="' + safe(s.id) + '">' + safe(s.name) + '</option>'
+      ).join("")
+    : '<option value="">Add a subject first</option>';
+
+  if (subjects.some(s => s.id === oldSelection)) {
+    $("chapterSubjectSelect").value = oldSelection;
+  }
+
+  $("chapterSubjectsList").innerHTML = subjects.length
+    ? subjects.map(s => {
+        const items = chapters.filter(c => c.subjectId === s.id);
+        const done = items.filter(c => c.done).length;
+
+        return '<div class="chapter-subject">' +
+          '<div class="card-head"><div><h3>' + safe(s.name) +
+          '</h3><p class="muted small">' + done + ' / ' +
+          items.length + ' completed</p></div>' +
+          '<button type="button" class="icon-btn" data-chapter-subject-delete="' +
+          safe(s.id) + '">Delete subject</button></div>' +
+          (items.length ? items.map(c =>
+            '<div class="chapter-row">' +
+            '<input type="checkbox" id="chapter-' + safe(c.id) +
+            '" data-chapter-check="' + safe(c.id) + '"' +
+            (c.done ? ' checked' : '') + '>' +
+            '<label for="chapter-' + safe(c.id) +
+            '" class="' + (c.done ? 'is-complete' : '') + '">' +
+            safe(c.name) + '</label>' +
+            '<button type="button" class="icon-btn" data-chapter-delete="' +
+            safe(c.id) + '" aria-label="Delete chapter">✕</button></div>'
+          ).join("") : '<p class="empty">No chapters added yet.</p>') +
+          '</div>';
+      }).join("")
+    : '<div class="empty">Add a subject to start your chapter list.</div>';
+
+  $("chapterSelectAll").textContent =
+    total && completed === total ? "Unselect all" : "Select all";
+}
+
+$("chapterBoard").addEventListener("change", renderChapterTracker);
+$("chapterClass").addEventListener("change", renderChapterTracker);
+
+$("chapterSubjectForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const name = $("chapterSubjectName").value.trim();
+  if (!name) return;
+
+  if (scopedChapterSubjects().some(s =>
+    s.name.toLowerCase() === name.toLowerCase()
+  )) {
+    alert("This subject already exists for this board and class.");
+    return;
+  }
+
+  chapterData.subjects.push({
+    id: uid(),
+    board: $("chapterBoard").value,
+    level: $("chapterClass").value,
+    name
+  });
+
+  saveChapterData();
+  $("chapterSubjectName").value = "";
+  renderChapterTracker();
+});
+
+$("chapterForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const subjectId = $("chapterSubjectSelect").value;
+  const name = $("chapterName").value.trim();
+
+  if (!subjectId || !name) {
+    alert("Please add and select a subject first.");
+    return;
+  }
+
+  if (scopedChapters().some(c =>
+    c.subjectId === subjectId &&
+    c.name.toLowerCase() === name.toLowerCase()
+  )) {
+    alert("This chapter already exists in that subject.");
+    return;
+  }
+
+  chapterData.chapters.push({
+    id: uid(),
+    subjectId,
+    name,
+    done: false
+  });
+
+  saveChapterData();
+  $("chapterName").value = "";
+  renderChapterTracker();
+});
+
+document.addEventListener("change", e => {
+  const el = e.target.closest("[data-chapter-check]");
+  if (!el) return;
+
+  const chapter = chapterData.chapters.find(
+    c => c.id === el.dataset.chapterCheck
+  );
+
+  if (chapter) {
+    chapter.done = el.checked;
+    saveChapterData();
+    renderChapterTracker();
+  }
+});
+
+document.addEventListener("click", e => {
+  const button = e.target.closest("button");
+  if (!button) return;
+
+  if (button.dataset.chapterDelete) {
+    chapterData.chapters = chapterData.chapters.filter(
+      c => c.id !== button.dataset.chapterDelete
+    );
+    saveChapterData();
+    renderChapterTracker();
+  }
+
+  if (button.dataset.chapterSubjectDelete) {
+    const id = button.dataset.chapterSubjectDelete;
+    chapterData.subjects = chapterData.subjects.filter(s => s.id !== id);
+    chapterData.chapters = chapterData.chapters.filter(c => c.subjectId !== id);
+    saveChapterData();
+    renderChapterTracker();
+  }
+
+  if (button.id === "chapterSelectAll") {
+    const chapters = scopedChapters();
+    const allDone = chapters.length > 0 && chapters.every(c => c.done);
+    chapters.forEach(c => c.done = !allDone);
+    saveChapterData();
+    renderChapterTracker();
+  }
+});
+
+renderChapterTracker();
 /* Focus timer */
 let remaining=25*60, interval=null;
 
