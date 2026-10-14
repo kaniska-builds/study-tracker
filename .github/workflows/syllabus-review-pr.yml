@@ -1,0 +1,71 @@
+name: Syllabus Review Report
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  review-report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Generate review report
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          drafts = sorted(Path("data/drafts").glob("*.json"))
+          if not drafts:
+              raise SystemExit("No syllabus drafts found.")
+
+          report = {
+              "purpose": "Admin review only. Nothing is published.",
+              "drafts": []
+          }
+
+          for path in drafts:
+              data = json.loads(path.read_text(encoding="utf-8"))
+              report["drafts"].append({
+                  "file": str(path),
+                  "board": data.get("board"),
+                  "class": data.get("class"),
+                  "subject": data.get("subject"),
+                  "academicYear": data.get("academicYear"),
+                  "status": data.get("status"),
+                  "approved": data.get("approved"),
+                  "units": [
+                      {
+                          "unitNumber": unit.get("unitNumber"),
+                          "name": unit.get("name"),
+                          "chapters": [
+                              {
+                                  "chapterNumber": chapter.get("chapterNumber"),
+                                  "name": chapter.get("name"),
+                                  "verified": chapter.get("verified")
+                              }
+                              for chapter in unit.get("chapters", [])
+                          ]
+                      }
+                      for unit in data.get("units", [])
+                  ]
+              })
+
+          Path("syllabus-review-report.json").write_text(
+              json.dumps(report, indent=2, ensure_ascii=False) + "\n",
+              encoding="utf-8"
+          )
+          print("Review report generated. No syllabus was published.")
+          PY
+
+      - name: Upload review report
+        uses: actions/upload-artifact@v4
+        with:
+          name: syllabus-admin-review-report
+          path: syllabus-review-report.json
+          retention-days: 14
+          
