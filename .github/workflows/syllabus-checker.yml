@@ -1,11 +1,23 @@
 name: Syllabus Checker
 
-"on":
+on:
   workflow_dispatch:
+  schedule:
+    - cron: "30 3 * * *"
 
 jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - name: Test workflow
-        run: echo "Syllabus Checker is working"
+      - name: Check official syllabus pages
+        run: |
+          set -eu
+          curl -fsSL --max-time 30 \
+            https://cbseacademic.nic.in/curriculum_2027.html \
+            -o /tmp/cbse.html
+          curl -fsSL --max-time 30 \
+            https://cisce.org/ -o /tmp/cisce.html
+          curl -fsSL --max-time 30 \
+            https://chseodisha.nic.in/syllabus/ \
+            -o /tmp/chse.html
+          echo "All three official pages responded successfully."
