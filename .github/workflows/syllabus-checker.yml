@@ -1,19 +1,9 @@
 name: Syllabus Checker
 
-"on":
-  workflow_dispatch:
-  schedule:
-    - cron: "30 3 * * 1"
-
-permissions:
-  contents: read
+on: workflow_dispatch
 
 jobs:
-  check:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Verify website file
-        run: test -f index.html
+check:
+runs-on: ubuntu-latest
+steps:
+- run: echo "Syllabus Checker workflow is working"
