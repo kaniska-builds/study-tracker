@@ -1,0 +1,134 @@
+{
+  "board": "CBSE",
+  "class": 10,
+  "subject": "Mathematics",
+  "subjectCodes": ["041", "241"],
+  "academicYear": "2026-27",
+  "source": "https://cbseacademic.nic.in/web_material/CurriculumMain27/SecPart1/Maths_SecP1X_2026-27.pdf",
+  "status": "pending_review",
+  "approved": false,
+  "units": [
+    {
+      "unitNumber": 1,
+      "name": "Number Systems",
+      "chapters": [
+        {
+          "chapterNumber": null,
+          "name": "Real Numbers",
+          "verified": false
+        }
+      ]
+    },
+    {
+      "unitNumber": 2,
+      "name": "Algebra",
+      "chapters": [
+        {
+          "chapterNumber": null,
+          "name": "Polynomials",
+          "verified": false
+        },
+        {
+          "chapterNumber": null,
+          "name": "Pair of Linear Equations in Two Variables",
+          "verified": false
+        },
+        {
+          "chapterNumber": null,
+          "name": "Quadratic Equations",
+          "verified": false
+        },
+        {
+          "chapterNumber": null,
+          "name": "Arithmetic Progressions",
+          "verified": false
+        }
+      ]
+    },
+    {
+      "unitNumber": 3,
+      "name": "Coordinate Geometry",
+      "chapters": [
+        {
+          "chapterNumber": null,
+          "name": "Coordinate Geometry",
+          "verified": false
+        }
+      ]
+    },
+    {
+      "unitNumber": 4,
+      "name": "Geometry",
+      "chapters": [
+        {
+          "chapterNumber": null,
+          "name": "Triangles",
+          "verified": false
+        },
+        {
+          "chapterNumber": null,
+          "name": "Circles",
+          "verified": false
+        }
+      ]
+    },
+    {
+      "unitNumber": 5,
+      "name": "Trigonometry",
+      "chapters": [
+        {
+          "chapterNumber": null,
+          "name": "Introduction to Trigonometry",
+          "verified": false
+        },
+        {
+          "chapterNumber": null,
+          "name": "Trigonometric Identities",
+          "verified": false
+        },
+        {
+          "chapterNumber": null,
+          "name": "Heights and Distances",
+          "verified": false
+        }
+      ]
+    },
+    {
+      "unitNumber": 6,
+      "name": "Mensuration",
+      "chapters": [
+        {
+          "chapterNumber": null,
+          "name": "Areas Related to Circles",
+          "verified": false
+        },
+        {
+          "chapterNumber": null,
+          "name": "Surface Areas and Volumes",
+          "verified": false
+        }
+      ]
+    },
+    {
+      "unitNumber": 7,
+      "name": "Statistics and Probability",
+      "chapters": [
+        {
+          "chapterNumber": null,
+          "name": "Statistics",
+          "verified": false
+        },
+        {
+          "chapterNumber": null,
+          "name": "Probability",
+          "verified": false
+        }
+      ]
+    }
+  ],
+  "reviewNotes": [
+    "Chapter numbering is not yet verified against the official PDF.",
+    "Confirm whether Mathematics Standard and Basic share this chapter list.",
+    "Do not publish until the administrator verifies the draft."
+  ]
+}
