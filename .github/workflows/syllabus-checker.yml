@@ -1,11 +1,11 @@
 name: Syllabus Checker
 
 "on":
-workflow_dispatch:
+  workflow_dispatch:
 
 jobs:
-check:
-runs-on: ubuntu-latest
-steps:
-- name: Test workflow
-run: echo "Syllabus Checker is working"
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Test workflow
+        run: echo "Syllabus Checker is working"
