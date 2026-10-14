@@ -1,0 +1,36 @@
+name: Syllabus Data Audit
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check syllabus data file
+        shell: bash
+        run: |
+          set -euo pipefail
+          FILE="index.html"
+
+          if [ ! -f "$FILE" ]; then
+            echo "ERROR: index.html not found"
+            exit 1
+          fi
+
+          if ! grep -q "AUTO_SYLLABUS" "$FILE"; then
+            echo "ERROR: AUTO_SYLLABUS not found in index.html"
+            exit 1
+          fi
+
+          echo "PASS: index.html exists"
+          echo "PASS: AUTO_SYLLABUS marker found"
+          echo ""
+          echo "Basic syllabus data check completed."
+          echo "Note: this does not verify chapter accuracy against official board syllabi."
