@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#090914">
+  <title>Admin | Study Tracker</title>
+
+  <style>
+    :root {
+      --bg: #090914;
+      --panel: #121225;
+      --border: #29294b;
+      --purple: #9b6cff;
+      --blue: #62a7ff;
+      --text: #f4f1ff;
+      --muted: #aaa6c5;
+      --yellow: #ffd166;
+      --green: #60e6a6;
+      --red: #ff7b91;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background:
+        radial-gradient(ellipse at top, #21143c 0, var(--bg) 52%);
+      color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+    }
+
+    header {
+      padding: 22px;
+      border-bottom: 1px solid var(--border);
+      background: #0b0b19e8;
+    }
+
+    .brand {
+      color: var(--purple);
+      font-weight: 800;
+      letter-spacing: .5px;
+    }
+
+    .container {
+      max-width: 1100px;
+      padding: 28px 18px 50px;
+      margin: auto;
+    }
+
+    h1 { margin: 8px 0; font-size: clamp(25px, 5vw, 36px); }
+    h2 { font-size: 18px; margin-top: 0; }
+    p { color: var(--muted); line-height: 1.6; }
+
+    .notice {
+      border: 1px solid #6a4a9c;
+      background: #201638;
+      padding: 14px;
+      border-radius: 12px;
+      margin: 20px 0;
+      color: #e5d7ff;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+      gap: 12px;
+      margin: 22px 0;
+    }
+
+    .panel, .stat {
+      background: #121225e8;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 18px;
+    }
+
+    .stat strong {
+      display: block;
+      font-size: 28px;
+      margin-top: 8px;
+      color: var(--blue);
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 18px 0;
+    }
+
+    input, select, button {
+      font: inherit;
+      border-radius: 10px;
+      padding: 11px 13px;
+    }
+
+    input, select {
+      color: var(--text);
+      background: #0d0d1c;
+      border: 1px solid var(--border);
+      min-width: 150px;
+    }
+
+    button {
+      border: 0;
+      cursor: pointer;
+      font-weight: 700;
+      background: var(--purple);
+      color: #10091d;
+    }
+
+    button.secondary {
+      color: var(--text);
+      background: #272742;
+      border: 1px solid #41416a;
+    }
+
+    button:focus-visible, input:focus-visible, select:focus-visible {
+      outline: 2px solid var(--blue);
+      outline-offset: 3px;
+    }
+
+    .draft {
+      border: 1px solid var(--border);
+      background: var(--panel);
+      border-radius: 16px;
+      padding: 20px;
+      margin: 14px 0;
+    }
+
+    .draft-top {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 5px 9px;
+      border-radius: 20px;
+      color: var(--yellow);
+      background: #453717;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .details {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 12px;
+      margin: 18px 0;
+    }
+
+    .details div {
+      background: #0c0c1b;
+      padding: 12px;
+      border-radius: 10px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .details strong {
+      display: block;
+      color: var(--text);
+      margin-top: 5px;
+    }
+
+    .actions { display: flex; flex-wrap: wrap; gap: 9px; }
+    .approve { background: #60e6a6; }
+    .reject { background: #ff7b91; }
+
+    .empty {
+      padding: 28px;
+      text-align: center;
+      border: 1px dashed var(--border);
+      border-radius: 12px;
+      color: var(--muted);
+    }
+
+    footer {
+      text-align: center;
+      padding: 20px;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <div class="brand">STUDY TRACKER / ADMIN</div>
+  </header>
+
+  <main class="container">
+    <p>SYLLABUS MANAGEMENT</p>
+    <h1>Admin Review Dashboard</h1>
+    <p>Inspect detected syllabus changes before they are considered for publication.</p>
+
+    <div class="notice">
+      <strong>Prototype mode</strong><br>
+      This page is not authenticated. Do not enter private information or treat
+      its buttons as real approval or publication controls.
+    </div>
+
+    <section class="stats" aria-label="Review statistics">
+      <div class="stat">Total drafts<strong id="total">1</strong></div>
+      <div class="stat">Pending review<strong id="pending">1</strong></div>
+      <div class="stat">Approved<strong id="approved">0</strong></div>
+      <div class="stat">Rejected<strong id="rejected">0</strong></div>
+    </section>
+
+    <section class="panel">
+      <h2>Review queue</h2>
+      <div class="toolbar">
+        <input id="search" type="search" placeholder="Search syllabus..."
+          aria-label="Search drafts">
+        <select id="filter" aria-label="Filter by status">
+          <option value="all">All statuses</option>
+          <option value="pending_review">Pending review</option>
+          <option value="approved">Approved (demo)</option>
+          <option value="rejected">Rejected (demo)</option>
+        </select>
+      </div>
+      <div id="queue" aria-live="polite"></div>
+    </section>
+
+    <section class="panel" style="margin-top:20px">
+      <h2>Review checklist</h2>
+      <p>Before a real approval, verify each item against the official source.</p>
+      <ul>
+        <li>Confirm the board, class and academic year.</li>
+        <li>Compare every chapter with the official syllabus.</li>
+        <li>Check chapter numbers and subject codes.</li>
+        <li>Record the source and verification date.</li>
+        <li>Publish only through the secure approval system.</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer>Study Tracker · Syllabus review prototype</footer>
+
+  <script>
+    // Sample data only. This is not connected to GitHub or a database.
+    const drafts = [{
+      id: "cbse-class-10-mathematics",
+      title: "CBSE Class 10 Mathematics",
+      board: "CBSE",
+      className: "Class 10",
+      year: "2026–27",
+      status: "pending_review",
+      chapters: 7,
+      verified: 0,
+      source: "https://cbseacademic.nic.in/curriculum_2027.html"
+    }];
+
+    const demoDecisions = {};
+
+    function statusOf(draft) {
+      return demoDecisions[draft.id] || draft.status;
+    }
+
+    function updateStats() {
+      document.getElementById("total").textContent = drafts.length;
+      document.getElementById("pending").textContent =
+        drafts.filter(d => statusOf(d) === "pending_review").length;
+      document.getElementById("approved").textContent =
+        drafts.filter(d => statusOf(d) === "approved").length;
+      document.getElementById("rejected").textContent =
+        drafts.filter(d => statusOf(d) === "rejected").length;
+    }
+
+    function render() {
+      const queue = document.getElementById("queue");
+      const term = document.getElementById("search").value.toLowerCase();
+      const filter = document.getElementById("filter").value;
+
+      const visible = drafts.filter(d => {
+        const status = statusOf(d);
+        const matchesText = (d.title + " " + d.board + " " + d.year)
+          .toLowerCase().includes(term);
+        return matchesText && (filter === "all" || filter === status);
+      });
+
+      queue.replaceChildren();
+
+      if (!visible.length) {
+        const empty = document.createElement("div");
+        empty.className = "empty";
+        empty.textContent = "No drafts match your search.";
+        queue.appendChild(empty);
+      }
+
+      visible.forEach(d => {
+        const card = document.createElement("article");
+        card.className = "draft";
+
+        const top = document.createElement("div");
+        top.className = "draft-top";
+
+        const heading = document.createElement("div");
+        const title = document.createElement("h2");
+        title.textContent = d.title;
+        const subtitle = document.createElement("p");
+        subtitle.textContent = d.board + " · " + d.className + " · " + d.year;
+        heading.append(title, subtitle);
+
+        const badge = document.createElement("span");
+        badge.className = "badge";
+        badge.textContent = statusOf(d).replaceAll("_", " ").toUpperCase();
+        top.append(heading, badge);
+
+        const details = document.createElement("div");
+        details.className = "details";
+        [
+          ["Detected units", d.chapters],
+          ["Verified units", d.verified],
+          ["Source", "Official curriculum page"]
+        ].forEach(([label, value]) => {
+          const box = document.createElement("div");
+          box.append(document.createTextNode(label));
+          const strong = document.createElement("strong");
+          strong.textContent = value;
+          box.appendChild(strong);
+          details.appendChild(box);
+        });
+
+        const source = document.createElement("a");
+        source.href = d.source;
+        source.target = "_blank";
+        source.rel = "noopener noreferrer";
+        source.textContent = "Open official source";
+        source.style.color = "#8fbdff";
+
+        const actions = document.createElement("div");
+        actions.className = "actions";
+        const review = document.createElement("button");
+        review.className = "secondary";
+        review.textContent = "Review details";
+        review.onclick = () => alert(
+          "Demo only: review the official source and chapter list. " +
+          "No actual syllabus data is connected yet."
+        );
+        actions.appendChild(review);
+
+        if (statusOf(d) === "pending_review") {
+          const approve = document.createElement("button");
+          approve.className = "approve";
+          approve.textContent = "Approve (demo)";
+          approve.onclick = () => {
+            alert("Demo only. Nothing has been approved or published.");
+          };
+
+          const reject = document.createElement("button");
+          reject.className = "reject";
+          reject.textContent = "Reject (demo)";
+          reject.onclick = () => {
+            alert("Demo only. Nothing has been rejected or saved.");
+          };
+          actions.append(approve, reject);
+        }
+
+        card.append(top, details, source, document.createElement("br"), actions);
+        queue.appendChild(card);
+      });
+
+      updateStats();
+    }
+
+    document.getElementById("search").addEventListener("input", render);
+    document.getElementById("filter").addEventListener("change", render);
+    render();
+  </script>
+</body>
+                                                                  </html>
