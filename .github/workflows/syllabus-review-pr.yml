@@ -8,65 +8,84 @@ permissions:
   pull-requests: write
 
 jobs:
-  prepare-review:
+  create-review-pr:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Validate syllabus draft
+      - name: Prepare review copy
         run: |
           python - <<'PY'
           import json
           from pathlib import Path
 
-          drafts = sorted(Path("data/drafts").glob("*.json"))
+          source_dir = Path("data/drafts")
+          review_dir = Path("data/review-queue")
+          review_dir.mkdir(parents=True, exist_ok=True)
+
+          drafts = sorted(source_dir.glob("*.json"))
 
           if not drafts:
               raise SystemExit("No syllabus drafts found.")
 
-          for path in drafts:
-              data = json.loads(path.read_text(encoding="utf-8"))
+          for source in drafts:
+              data = json.loads(source.read_text(encoding="utf-8"))
 
               if data.get("status") != "pending_review":
-                  raise SystemExit(f"Not pending review: {path}")
+                  raise SystemExit(f"Draft is not pending review: {source}")
 
               if data.get("approved") is not False:
-                  raise SystemExit(f"Draft must remain unapproved: {path}")
+                  raise SystemExit(f"Draft must remain unapproved: {source}")
 
-              print(f"Validated: {path}")
+              target = review_dir / source.name
+              target.write_text(
+                  json.dumps(data, indent=2, ensure_ascii=False) + "\n",
+                  encoding="utf-8"
+              )
+              print(f"Prepared review copy: {target}")
 
-          print("Draft validation passed.")
+          print("Review copies prepared. Nothing was published.")
           PY
 
-      - name: Create syllabus review pull request
+      - name: Create or update review pull request
         env:
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
-          SOURCE_BRANCH: ${{ github.ref_name }}
         run: |
           set -e
 
-          BRANCH="syllabus-review-${GITHUB_RUN_ID}"
+          BRANCH="syllabus-review-queue"
 
           git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.email \
+            "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git switch -c "$BRANCH"
-          git add data/drafts
+          git switch -C "$BRANCH"
+          git add data/review-queue/
 
           if git diff --cached --quiet; then
-            echo "No draft changes to submit for review."
-            exit 0
+            echo "No new review-copy changes to commit."
+          else
+            git commit -m "Prepare syllabus drafts for admin review"
+            git push --force origin "$BRANCH"
           fi
 
-          git commit -m "Prepare syllabus draft for admin review"
-          git push origin "$BRANCH"
-
-          gh pr create \
+          if gh pr list \
             --repo "$REPOSITORY" \
-            --base main \
             --head "$BRANCH" \
-            --title "Review CBSE Class 10 syllabus draft" \
-            --body "Admin review required. Verify the official syllabus and chapter numbering before merging. This PR does not publish the draft automatically."
+            --base main \
+            --state open \
+            --json number \
+            --jq 'length' | grep -q '^0$'; then
+
+            gh pr create \
+              --repo "$REPOSITORY" \
+              --base main \
+              --head "$BRANCH" \
+              --title "Review CBSE Class 10 syllabus draft" \
+              --body "Review copy of unapproved syllabus drafts. Verify all details against official sources. This PR does not publish or approve the syllabus."
+          else
+            echo "An open review PR already exists for this branch."
+          fi
