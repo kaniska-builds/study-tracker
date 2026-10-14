@@ -1328,6 +1328,7 @@ const AUTO_SYLLABUS = {
   }
 };
         
+
 function loadAutomaticSyllabus() {
   const board = $("chapterBoard").value;
   const level = $("chapterClass").value;
@@ -1336,6 +1337,7 @@ function loadAutomaticSyllabus() {
   if (!subjects) return;
 
   let added = 0;
+  let updated = 0;
 
   Object.entries(subjects).forEach(([subjectName, chapterNames]) => {
     let subject = chapterData.subjects.find(s =>
@@ -1349,24 +1351,35 @@ function loadAutomaticSyllabus() {
         id: uid(),
         board,
         level,
-        name: subjectName
+        name: subjectName,
+        syllabusManaged: true
       };
+
       chapterData.subjects.push(subject);
     }
 
     chapterNames.forEach(name => {
-      const exists = chapterData.chapters.some(c =>
+      const existing = chapterData.chapters.find(c =>
         c.subjectId === subject.id &&
-        c.name.toLowerCase() === name.toLowerCase()
+        c.name.trim().toLowerCase() === name.trim().toLowerCase()
       );
 
-      if (!exists) {
+      if (existing) {
+        // Keep the chapter's completed status.
+        // Update only its displayed name when needed.
+        if (existing.name !== name) {
+          existing.name = name;
+          updated++;
+        }
+      } else {
         chapterData.chapters.push({
           id: uid(),
           subjectId: subject.id,
           name,
-          done: false
+          done: false,
+          source: "auto-syllabus"
         });
+
         added++;
       }
     });
@@ -1374,10 +1387,15 @@ function loadAutomaticSyllabus() {
 
   saveChapterData();
   renderChapterTracker();
-  alert(added
-    ? added + " syllabus chapters added successfully!"
-    : "Syllabus chapters are already added.");
+
+  alert(
+    "Syllabus sync complete!\n" +
+    "New chapters added: " + added +
+    "\nChapter names updated: " + updated +
+    "\nCompleted progress preserved."
+  );
 }
+  
 
 $("chapterBoard").addEventListener("change", loadAutomaticSyllabus);
 $("chapterClass").addEventListener("change", loadAutomaticSyllabus);
