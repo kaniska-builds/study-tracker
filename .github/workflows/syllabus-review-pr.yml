@@ -15,7 +15,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Check syllabus draft
+      - name: Validate syllabus draft
         run: |
           python - <<'PY'
           import json
@@ -30,19 +30,43 @@ jobs:
               data = json.loads(path.read_text(encoding="utf-8"))
 
               if data.get("status") != "pending_review":
-                  raise SystemExit(
-                      f"{path} is not pending review."
-                  )
+                  raise SystemExit(f"Not pending review: {path}")
 
               if data.get("approved") is not False:
-                  raise SystemExit(
-                      f"{path} must not be approved automatically."
-                  )
+                  raise SystemExit(f"Draft must remain unapproved: {path}")
 
-              print(
-                  f"Review required: {path} — "
-                  f"{data.get('board')} Class {data.get('class')} "
-                  f"{data.get('subject')}"
-              )
+              print(f"Validated: {path}")
 
-          print("Draft checks passed. No syllabus was published.")
+          print("Draft validation passed.")
+          PY
+
+      - name: Create syllabus review pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          SOURCE_BRANCH: ${{ github.ref_name }}
+        run: |
+          set -e
+
+          BRANCH="syllabus-review-${GITHUB_RUN_ID}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git switch -c "$BRANCH"
+          git add data/drafts
+
+          if git diff --cached --quiet; then
+            echo "No draft changes to submit for review."
+            exit 0
+          fi
+
+          git commit -m "Prepare syllabus draft for admin review"
+          git push origin "$BRANCH"
+
+          gh pr create \
+            --repo "$REPOSITORY" \
+            --base main \
+            --head "$BRANCH" \
+            --title "Review CBSE Class 10 syllabus draft" \
+            --body "Admin review required. Verify the official syllabus and chapter numbering before merging. This PR does not publish the draft automatically."
