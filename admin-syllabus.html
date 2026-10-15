@@ -36,6 +36,35 @@
       border-bottom: 1px solid var(--border);
       background: #0b0b19e8;
     }
+    
+.header-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+#logoutButton {
+  background: #272742;
+  color: var(--text);
+  border: 1px solid #41416a;
+  border-radius: 10px;
+  padding: 9px 13px;
+  font: inherit;
+  cursor: pointer;
+}
+
+#logoutButton:hover {
+  background: #353555;
+}
+
+#logoutButton:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+    
 
     .brand {
       color: var(--purple);
@@ -190,9 +219,14 @@
 </head>
 
 <body>
-  <header>
+  
+<header>
+  <div class="header-inner">
     <div class="brand">STUDY TRACKER / ADMIN</div>
-  </header>
+    <button id="logoutButton" type="button" hidden>Log out</button>
+  </div>
+</header>
+  
 
 <section id="loginBox" class="container" style="max-width:420px;margin:40px auto;padding:24px;background:#171326;border:1px solid #7047ff;border-radius:16px;">
   <h2>Admin Login</h2>
@@ -298,8 +332,27 @@ const loginBox = document.getElementById("loginBox");
 const loginForm = document.getElementById("loginForm");
 const loginMessage = document.getElementById("loginMessage");
 const dashboard = document.querySelector("main.container");
+  
+const logoutButton = document.getElementById("logoutButton");
+  
 
 if (loginBox && dashboard) dashboard.hidden = true;
+
+if (logoutButton) {
+  logoutButton.addEventListener("click", async () => {
+    logoutButton.disabled = true;
+    logoutButton.textContent = "Logging out...";
+
+    try {
+      await signOut(auth);
+    } catch (error) {
+      alert("Logout failed. Please try again.");
+      logoutButton.disabled = false;
+      logoutButton.textContent = "Log out";
+    }
+  });
+}
+  
 
 loginForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -318,12 +371,16 @@ function showLogin(message = "") {
   if (loginBox) loginBox.hidden = false;
   if (dashboard) dashboard.hidden = true;
   if (loginMessage) loginMessage.textContent = message;
+  if (logoutButton) logoutButton.hidden = true;
 }
+
 
 function showDashboard() {
   if (loginBox) loginBox.hidden = true;
   if (dashboard) dashboard.hidden = false;
+  if (logoutButton) logoutButton.hidden = false;
 }
+  
 
 let drafts = [];
 
