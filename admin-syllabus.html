@@ -194,6 +194,26 @@
     <div class="brand">STUDY TRACKER / ADMIN</div>
   </header>
 
+<section id="loginBox" class="container" style="max-width:420px;margin:40px auto;padding:24px;background:#171326;border:1px solid #7047ff;border-radius:16px;">
+  <h2>Admin Login</h2>
+  <p>Sign in to manage syllabus drafts.</p>
+
+  <form id="loginForm">
+    <label for="adminEmail">Email address</label>
+    <input id="adminEmail" type="email" required
+      placeholder="Your admin email"
+      style="display:block;width:100%;box-sizing:border-box;padding:12px;margin:8px 0 16px;">
+
+    <label for="adminPassword">Password</label>
+    <input id="adminPassword" type="password" required
+      placeholder="Enter password"
+      style="display:block;width:100%;box-sizing:border-box;padding:12px;margin:8px 0 16px;">
+
+    <button type="submit">Sign In</button>
+    <p id="loginMessage" role="status"></p>
+  </form>
+</section>
+  
   <main class="container">
     <p>SYLLABUS MANAGEMENT</p>
     <h1>Admin Review Dashboard</h1>
@@ -242,136 +262,236 @@
 
   <footer>Study Tracker · Syllabus review prototype</footer>
 
-  <script>
-    // Sample data only. This is not connected to GitHub or a database.
-    const drafts = [{
-      id: "cbse-class-10-mathematics",
-      title: "CBSE Class 10 Mathematics",
-      board: "CBSE",
-      className: "Class 10",
-      year: "2026–27",
-      status: "pending_review",
-      chapters: 7,
-      verified: 0,
-      source: "https://cbseacademic.nic.in/curriculum_2027.html"
-    }];
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-app.js";
+import {
+  getAuth,
+  signInWithEmailAndPassword,
+  onAuthStateChanged,
+  sendEmailVerification,
+  signOut
+} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-auth.js";
+import {
+  getFirestore,
+  collection,
+  getDocs,
+  doc,
+  updateDoc,
+  serverTimestamp
+} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
 
-    const demoDecisions = {};
+const firebaseConfig = {
+  apiKey: "AIzaSyD3Eakk0Q1qk8u2zUWJDkpUUUCgMBbJMWs",
+  authDomain: "study-tracker-dacd7.firebaseapp.com",
+  projectId: "study-tracker-dacd7",
+  storageBucket: "study-tracker-dacd7.firebasestorage.app",
+  messagingSenderId: "717578428619",
+  appId: "1:717578428619:web:0202f68bc2c4279b6e7b4e"
+};
 
-    function statusOf(draft) {
-      return demoDecisions[draft.id] || draft.status;
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const adminEmail = "instagramid1994@gmail.com";
+
+const loginBox = document.getElementById("loginBox");
+const loginForm = document.getElementById("loginForm");
+const loginMessage = document.getElementById("loginMessage");
+const dashboard = document.querySelector("main.container");
+
+if (loginBox && dashboard) dashboard.hidden = true;
+
+loginForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  loginMessage.textContent = "Signing in...";
+
+  try {
+    const email = document.getElementById("adminEmail").value.trim();
+    const password = document.getElementById("adminPassword").value;
+    await signInWithEmailAndPassword(auth, email, password);
+  } catch (error) {
+    loginMessage.textContent = "Login failed. Check email and password.";
+  }
+});
+
+function showLogin(message = "") {
+  if (loginBox) loginBox.hidden = false;
+  if (dashboard) dashboard.hidden = true;
+  if (loginMessage) loginMessage.textContent = message;
+}
+
+function showDashboard() {
+  if (loginBox) loginBox.hidden = true;
+  if (dashboard) dashboard.hidden = false;
+}
+
+let drafts = [];
+
+function statusOf(draft) {
+  return draft.status || "pending_review";
+}
+
+function updateStats() {
+  document.getElementById("total").textContent = drafts.length;
+  document.getElementById("pending").textContent =
+    drafts.filter(d => statusOf(d) === "pending_review").length;
+  document.getElementById("approved").textContent =
+    drafts.filter(d => statusOf(d) === "approved").length;
+  document.getElementById("rejected").textContent =
+    drafts.filter(d => statusOf(d) === "rejected").length;
+}
+
+function render() {
+  const queue = document.getElementById("queue");
+  const term = document.getElementById("search").value.toLowerCase();
+  const filter = document.getElementById("filter").value;
+
+  const visible = drafts.filter(d => {
+    const status = statusOf(d);
+    return (d.title + " " + d.board + " " + d.year)
+      .toLowerCase().includes(term) &&
+      (filter === "all" || filter === status);
+  });
+
+  queue.replaceChildren();
+
+  if (!visible.length) {
+    const empty = document.createElement("div");
+    empty.className = "empty";
+    empty.textContent = "No drafts found in Firestore.";
+    queue.appendChild(empty);
+  }
+
+  visible.forEach(d => {
+    const card = document.createElement("article");
+    card.className = "draft";
+
+    const title = document.createElement("h2");
+    title.textContent = d.title || "Untitled draft";
+
+    const subtitle = document.createElement("p");
+    subtitle.textContent =
+      `${d.board || ""} · ${d.className || ""} · ${d.year || ""}`;
+
+    const badge = document.createElement("span");
+    badge.className = "badge";
+    badge.textContent = statusOf(d).replaceAll("_", " ").toUpperCase();
+
+    const details = document.createElement("p");
+    details.textContent =
+      `Units: ${d.chapters ?? "—"} | Verified: ${d.verified ?? 0}`;
+
+    card.append(title, subtitle, badge, details);
+
+    if (d.source) {
+      const source = document.createElement("a");
+      source.href = d.source;
+      source.target = "_blank";
+      source.rel = "noopener noreferrer";
+      source.textContent = "Open source";
+      source.style.color = "#8fbdff";
+      card.appendChild(source);
     }
 
-    function updateStats() {
-      document.getElementById("total").textContent = drafts.length;
-      document.getElementById("pending").textContent =
-        drafts.filter(d => statusOf(d) === "pending_review").length;
-      document.getElementById("approved").textContent =
-        drafts.filter(d => statusOf(d) === "approved").length;
-      document.getElementById("rejected").textContent =
-        drafts.filter(d => statusOf(d) === "rejected").length;
-    }
+    const actions = document.createElement("div");
+    actions.className = "actions";
 
-    function render() {
-      const queue = document.getElementById("queue");
-      const term = document.getElementById("search").value.toLowerCase();
-      const filter = document.getElementById("filter").value;
+    if (statusOf(d) === "pending_review") {
+      for (const decision of ["approved", "rejected"]) {
+        const button = document.createElement("button");
+        button.className = decision === "approved" ? "approve" : "reject";
+        button.textContent = decision === "approved" ? "Approve" : "Reject";
 
-      const visible = drafts.filter(d => {
-        const status = statusOf(d);
-        const matchesText = (d.title + " " + d.board + " " + d.year)
-          .toLowerCase().includes(term);
-        return matchesText && (filter === "all" || filter === status);
-      });
+        button.addEventListener("click", async () => {
+          if (d.verified < d.chapters) {
+            alert("Verify all units against the official source before deciding.");
+            return;
+          }
 
-      queue.replaceChildren();
+          if (!confirm(`Confirm ${decision} for ${d.title}?`)) return;
 
-      if (!visible.length) {
-        const empty = document.createElement("div");
-        empty.className = "empty";
-        empty.textContent = "No drafts match your search.";
-        queue.appendChild(empty);
-      }
-
-      visible.forEach(d => {
-        const card = document.createElement("article");
-        card.className = "draft";
-
-        const top = document.createElement("div");
-        top.className = "draft-top";
-
-        const heading = document.createElement("div");
-        const title = document.createElement("h2");
-        title.textContent = d.title;
-        const subtitle = document.createElement("p");
-        subtitle.textContent = d.board + " · " + d.className + " · " + d.year;
-        heading.append(title, subtitle);
-
-        const badge = document.createElement("span");
-        badge.className = "badge";
-        badge.textContent = statusOf(d).replaceAll("_", " ").toUpperCase();
-        top.append(heading, badge);
-
-        const details = document.createElement("div");
-        details.className = "details";
-        [
-          ["Detected units", d.chapters],
-          ["Verified units", d.verified],
-          ["Source", "Official curriculum page"]
-        ].forEach(([label, value]) => {
-          const box = document.createElement("div");
-          box.append(document.createTextNode(label));
-          const strong = document.createElement("strong");
-          strong.textContent = value;
-          box.appendChild(strong);
-          details.appendChild(box);
+          button.disabled = true;
+          try {
+            await updateDoc(doc(db, "syllabusDrafts", d.id), {
+              status: decision,
+              reviewedAt: serverTimestamp(),
+              reviewedBy: auth.currentUser.email
+            });
+            d.status = decision;
+            render();
+          } catch (error) {
+            alert("Could not save decision. Check Firestore rules.");
+            button.disabled = false;
+          }
         });
 
-        const source = document.createElement("a");
-        source.href = d.source;
-        source.target = "_blank";
-        source.rel = "noopener noreferrer";
-        source.textContent = "Open official source";
-        source.style.color = "#8fbdff";
-
-        const actions = document.createElement("div");
-        actions.className = "actions";
-        const review = document.createElement("button");
-        review.className = "secondary";
-        review.textContent = "Review details";
-        review.onclick = () => alert(
-          "Demo only: review the official source and chapter list. " +
-          "No actual syllabus data is connected yet."
-        );
-        actions.appendChild(review);
-
-        if (statusOf(d) === "pending_review") {
-          const approve = document.createElement("button");
-          approve.className = "approve";
-          approve.textContent = "Approve (demo)";
-          approve.onclick = () => {
-            alert("Demo only. Nothing has been approved or published.");
-          };
-
-          const reject = document.createElement("button");
-          reject.className = "reject";
-          reject.textContent = "Reject (demo)";
-          reject.onclick = () => {
-            alert("Demo only. Nothing has been rejected or saved.");
-          };
-          actions.append(approve, reject);
-        }
-
-        card.append(top, details, source, document.createElement("br"), actions);
-        queue.appendChild(card);
-      });
-
-      updateStats();
+        actions.appendChild(button);
+      }
     }
 
-    document.getElementById("search").addEventListener("input", render);
-    document.getElementById("filter").addEventListener("change", render);
-    render();
-  </script>
+    card.appendChild(actions);
+    queue.appendChild(card);
+  });
+
+  updateStats();
+}
+
+async function loadDrafts() {
+  const snapshot = await getDocs(collection(db, "syllabusDrafts"));
+  drafts = snapshot.docs.map(item => ({ id: item.id, ...item.data() }));
+  render();
+}
+
+document.getElementById("search").addEventListener("input", render);
+document.getElementById("filter").addEventListener("change", render);
+
+onAuthStateChanged(auth, async user => {
+  if (!user) {
+    showLogin();
+    return;
+  }
+
+  if (user.email !== adminEmail) {
+    await signOut(auth);
+    showLogin("This account is not authorized.");
+    return;
+  }
+
+  if (!user.emailVerified) {
+    showLogin("Verify your email first, then sign in again.");
+
+    const resend = document.createElement("button");
+    resend.type = "button";
+    resend.textContent = "Resend verification email";
+    resend.onclick = async () => {
+      try {
+        await sendEmailVerification(auth.currentUser);
+        loginMessage.textContent = "Verification email sent. Check your inbox.";
+      } catch {
+        loginMessage.textContent = "Could not send email. Sign in again and retry.";
+      }
+    };
+    loginBox.appendChild(resend);
+    return;
+  }
+
+  showDashboard();
+
+  try {
+    await loadDrafts();
+  } catch (error) {
+    document.getElementById("queue").textContent =
+      "Could not load drafts. Check Firestore rules and email verification.";
+  }
+});
+          </script>
+  
+  
+
+    
+        
+
+        
+        
 </body>
                                                                   </html>
