@@ -1,0 +1,259 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Study Tracker | Syllabus Importer</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 24px;
+      background: #090914;
+      color: #f4f1ff;
+      font-family: system-ui, sans-serif;
+    }
+    main {
+      max-width: 650px;
+      margin: 30px auto;
+      padding: 22px;
+      background: #171326;
+      border: 1px solid #7047ff;
+      border-radius: 16px;
+    }
+    input, button {
+      box-sizing: border-box;
+      width: 100%;
+      padding: 12px;
+      margin: 8px 0;
+      border-radius: 9px;
+      font: inherit;
+    }
+    input {
+      color: white;
+      background: #090914;
+      border: 1px solid #49406a;
+    }
+    button {
+      border: 0;
+      background: #a78bfa;
+      color: #130c22;
+      font-weight: 700;
+    }
+    #status {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      line-height: 1.6;
+    }
+    .note { color: #c5bddf; line-height: 1.6; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>CBSE Syllabus Importer</h1>
+  <p class="note">
+    Imports a prepared Class 10 Mathematics draft into Firestore.
+    Every unit remains pending review. This tool does not read or
+    verify the official PDF automatically.
+  </p>
+
+  <form id="loginForm">
+    <label for="email">Admin email</label>
+    <input id="email" type="email" required
+      placeholder="Your verified admin email">
+
+    <label for="password">Admin password</label>
+    <input id="password" type="password" required
+      placeholder="Your Firebase password">
+
+    <button type="submit">Sign in</button>
+  </form>
+
+  <button id="importButton" hidden>
+    Import / Update 7 Units
+  </button>
+  <button id="logoutButton" hidden>Log out</button>
+  <p id="status" role="status">Please sign in first.</p>
+
+  <p class="note">
+    Source:
+    <a style="color:#a5c8ff"
+       href="https://cbseacademic.nic.in/web_material/CurriculumMain27/SecPart1/Maths_SecP1X_2026-27.pdf"
+       target="_blank" rel="noopener noreferrer">
+      Official CBSE Mathematics syllabus PDF
+    </a>
+  </p>
+</main>
+
+<script type="module">
+import { initializeApp } from
+  "https://www.gstatic.com/firebasejs/13.0.0/firebase-app.js";
+
+import {
+  getAuth,
+  signInWithEmailAndPassword,
+  onAuthStateChanged,
+  signOut
+} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-auth.js";
+
+import {
+  getFirestore,
+  doc,
+  setDoc,
+  serverTimestamp
+} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
+
+/*
+  IMPORTANT:
+  Replace this entire configuration object with the exact
+  firebaseConfig object from your existing admin-syllabus.html.
+  Keep your existing project's configuration unchanged.
+*/
+const firebaseConfig = {
+  apiKey: "PASTE_EXISTING_FIREBASE_API_KEY_HERE",
+  authDomain: "study-tracker-dacd7.firebaseapp.com",
+  projectId: "study-tracker-dacd7",
+  storageBucket: "study-tracker-dacd7.firebasestorage.app",
+  messagingSenderId: "717578428619",
+  appId: "1:717578428619:web:0202f68bc2c4279b6e7b4e"
+};
+
+const ADMIN_EMAIL = "instagramid1994@gmail.com";
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+const statusBox = document.getElementById("status");
+const loginForm = document.getElementById("loginForm");
+const importButton = document.getElementById("importButton");
+const logoutButton = document.getElementById("logoutButton");
+
+const parentId = "cbse-class-10-mathematics";
+const sourceUrl =
+  "https://cbseacademic.nic.in/web_material/CurriculumMain27/SecPart1/Maths_SecP1X_2026-27.pdf";
+
+const units = [
+  { id: "unit-1", unitNumber: 1, title: "Number Systems", marks: 6 },
+  { id: "unit-2", unitNumber: 2, title: "Algebra", marks: 20 },
+  { id: "unit-3", unitNumber: 3, title: "Coordinate Geometry", marks: 6 },
+  { id: "unit-4", unitNumber: 4, title: "Geometry", marks: 15 },
+  { id: "unit-5", unitNumber: 5, title: "Trigonometry", marks: 12 },
+  { id: "unit-6", unitNumber: 6, title: "Mensuration", marks: 10 },
+  {
+    id: "unit-7",
+    unitNumber: 7,
+    title: "Statistics and Probability",
+    marks: 11
+  }
+];
+
+let authorizedAdmin = false;
+
+onAuthStateChanged(auth, user => {
+  authorizedAdmin = Boolean(
+    user &&
+    user.email === ADMIN_EMAIL &&
+    user.emailVerified
+  );
+
+  importButton.hidden = !authorizedAdmin;
+  logoutButton.hidden = !user;
+  loginForm.hidden = authorizedAdmin;
+
+  if (!user) {
+    statusBox.textContent = "Please sign in first.";
+  } else if (!authorizedAdmin) {
+    statusBox.textContent =
+      "Access denied. Use the verified admin account.";
+  } else {
+    statusBox.textContent =
+      "Admin signed in. Check the syllabus source before importing.";
+  }
+});
+
+loginForm.addEventListener("submit", async event => {
+  event.preventDefault();
+  statusBox.textContent = "Signing in...";
+
+  try {
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value;
+
+    if (email !== ADMIN_EMAIL) {
+      throw new Error("Use the configured admin email.");
+    }
+
+    await signInWithEmailAndPassword(auth, email, password);
+  } catch (error) {
+    statusBox.textContent =
+      error.code === "auth/invalid-api-key"
+        ? "Firebase API key is missing. Copy the existing firebaseConfig."
+        : error.message || "Sign-in failed.";
+  }
+});
+
+logoutButton.addEventListener("click", async () => {
+  await signOut(auth);
+});
+
+importButton.addEventListener("click", async () => {
+  if (!authorizedAdmin || !auth.currentUser?.emailVerified) {
+    statusBox.textContent = "Verified admin login is required.";
+    return;
+  }
+
+  const confirmed = confirm(
+    "Import/update the 7 prepared units? All will remain pending review."
+  );
+
+  if (!confirmed) return;
+
+  importButton.disabled = true;
+  statusBox.textContent = "Importing units...";
+
+  try {
+    const parentRef = doc(db, "syllabusDrafts", parentId);
+
+    await setDoc(parentRef, {
+      title: "CBSE Class 10 Mathematics",
+      board: "CBSE",
+      className: "Class 10",
+      year: "2026–27",
+      status: "pending_review",
+      chapters: 7,
+      verified: 0,
+      source: sourceUrl,
+      subjectCodes: ["041", "241"],
+      importUpdatedAt: serverTimestamp()
+    }, { merge: true });
+
+    for (const unit of units) {
+      await setDoc(
+        doc(db, "syllabusDrafts", parentId, "units", unit.id),
+        {
+          ...unit,
+          subjectCodes: ["041", "241"],
+          status: "pending_review",
+          verified: false,
+          source: sourceUrl,
+          updatedAt: serverTimestamp()
+        },
+        { merge: true }
+      );
+    }
+
+    statusBox.textContent =
+      "Import completed: 7 units saved as pending_review.\n" +
+      "Next: compare every unit with the official PDF before review.";
+
+  } catch (error) {
+    statusBox.textContent =
+      "Import failed: " + (error.message || "Unknown error") +
+      "\nCheck the Firebase configuration and Firestore security rules.";
+  } finally {
+    importButton.disabled = false;
+  }
+});
+</script>
+</body>
+</html>
