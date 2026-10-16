@@ -6,6 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Study Tracker | Syllabus Importer</title>
   <style>
+    * { box-sizing: border-box; }
+
     body {
       margin: 0;
       padding: 24px;
@@ -13,6 +15,7 @@
       color: #f4f1ff;
       font-family: system-ui, sans-serif;
     }
+
     main {
       max-width: 650px;
       margin: 30px auto;
@@ -21,65 +24,113 @@
       border: 1px solid #7047ff;
       border-radius: 16px;
     }
-    input, button {
-      box-sizing: border-box;
+
+    input, select, button {
       width: 100%;
       padding: 12px;
-      margin: 8px 0;
+      margin: 8px 0 16px;
       border-radius: 9px;
       font: inherit;
     }
-    input {
+
+    input, select {
       color: white;
       background: #090914;
       border: 1px solid #49406a;
     }
+
     button {
       border: 0;
       background: #a78bfa;
       color: #130c22;
       font-weight: 700;
+      cursor: pointer;
     }
+
+    button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
     #status {
       white-space: pre-wrap;
       overflow-wrap: anywhere;
       line-height: 1.6;
     }
-    .note { color: #c5bddf; line-height: 1.6; }
+
+    .note {
+      color: #c5bddf;
+      line-height: 1.6;
+    }
+
+    label {
+      display: block;
+      margin-top: 8px;
+    }
+
+    [hidden] { display: none !important; }
   </style>
 </head>
+
 <body>
 <main>
   <h1>CBSE Syllabus Importer</h1>
+
   <p class="note">
-    Imports a prepared Class 10 Mathematics draft into Firestore.
-    Every unit remains pending review. This tool does not read or
-    verify the official PDF automatically.
+    Import prepared Class 10 Mathematics units into Firestore.
+    Basic and Standard courses use separate document paths.
+    Imported content remains pending review and is not
+    automatically verified against the official PDF.
   </p>
 
   <form id="loginForm">
     <label for="email">Admin email</label>
-    <input id="email" type="email" required
-      placeholder="Your verified admin email">
+    <input
+      id="email"
+      type="email"
+      required
+      autocomplete="username"
+      placeholder="Your verified admin email"
+    >
 
     <label for="password">Admin password</label>
-    <input id="password" type="password" required
-      placeholder="Your Firebase password">
+    <input
+      id="password"
+      type="password"
+      required
+      autocomplete="current-password"
+      placeholder="Your Firebase password"
+    >
 
-    <button type="submit">Sign in</button>
+    <button id="loginButton" type="submit">Sign in</button>
   </form>
 
-  <button id="importButton" hidden>
-    Import / Update 7 Units
-  </button>
-  <button id="logoutButton" hidden>Log out</button>
-  <p id="status" role="status">Please sign in first.</p>
+  <section id="importSection" hidden>
+    <label for="courseSelect">Choose Mathematics course</label>
+    <select id="courseSelect">
+      <option value="basic">Mathematics Basic (241)</option>
+      <option value="standard">Mathematics Standard (041)</option>
+    </select>
+
+    <button id="importButton" type="button">
+      Import / Update 7 Units
+    </button>
+  </section>
+
+  <button id="logoutButton" type="button" hidden>Log out</button>
+
+  <p id="status" role="status" aria-live="polite">
+    Please sign in first.
+  </p>
 
   <p class="note">
     Source:
-    <a style="color:#a5c8ff"
-       href="https://cbseacademic.nic.in/web_material/CurriculumMain27/SecPart1/Maths_SecP1X_2026-27.pdf"
-       target="_blank" rel="noopener noreferrer">
+    <a
+      style="color:#a5c8ff"
+      href="https://cbseacademic.nic.in/web_material/CurriculumMain27/SecPart1/Maths_SecP1X_2026-27.pdf"
+      target="_blank"
+      rel="noopener noreferrer"
+    >
       Official CBSE Mathematics syllabus PDF
     </a>
   </p>
@@ -103,12 +154,6 @@ import {
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
 
-/*
-  IMPORTANT:
-  Replace this entire configuration object with the exact
-  firebaseConfig object from your existing admin-syllabus.html.
-  Keep your existing project's configuration unchanged.
-*/
 const firebaseConfig = {
   apiKey: "AIzaSyD3Eakk0Q1qk8u2zUWJDkpUUUCgMBbJMWs",
   authDomain: "study-tracker-dacd7.firebaseapp.com",
@@ -119,23 +164,44 @@ const firebaseConfig = {
 };
 
 const ADMIN_EMAIL = "instagramid1994@gmail.com";
+
+const SOURCE_URL =
+  "https://cbseacademic.nic.in/web_material/CurriculumMain27/SecPart1/Maths_SecP1X_2026-27.pdf";
+
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
 const statusBox = document.getElementById("status");
 const loginForm = document.getElementById("loginForm");
+const loginButton = document.getElementById("loginButton");
+const importSection = document.getElementById("importSection");
+const courseSelect = document.getElementById("courseSelect");
 const importButton = document.getElementById("importButton");
 const logoutButton = document.getElementById("logoutButton");
 
-const parentId = "cbse-class-10-mathematics";
-const sourceUrl =
-  "https://cbseacademic.nic.in/web_material/CurriculumMain27/SecPart1/Maths_SecP1X_2026-27.pdf";
+const courses = {
+  basic: {
+    parentId: "cbse-class-10-mathematics-basic-241",
+    title: "CBSE Class 10 Mathematics Basic",
+    courseName: "Basic Mathematics",
+    subjectCode: "241"
+  },
 
+  standard: {
+    parentId: "cbse-class-10-mathematics-standard-041",
+    title: "CBSE Class 10 Mathematics Standard",
+    courseName: "Standard Mathematics",
+    subjectCode: "041"
+  }
+};
 
 const units = [
   {
-    id: "unit-1", unitNumber: 1, title: "Number Systems", marks: 6,
+    id: "unit-1",
+    unitNumber: 1,
+    title: "Number Systems",
+    marks: 6,
     topics: [
       "Real Numbers",
       "Fundamental Theorem of Arithmetic: statement, examples and applications",
@@ -143,7 +209,10 @@ const units = [
     ]
   },
   {
-    id: "unit-2", unitNumber: 2, title: "Algebra", marks: 20,
+    id: "unit-2",
+    unitNumber: 2,
+    title: "Algebra",
+    marks: 20,
     topics: [
       "Polynomials: zeros and relationship between zeros and coefficients of quadratic polynomials",
       "Pair of Linear Equations in Two Variables: graphical method, consistency, inconsistency, algebraic conditions, substitution and elimination methods, situational problems",
@@ -152,7 +221,10 @@ const units = [
     ]
   },
   {
-    id: "unit-3", unitNumber: 3, title: "Coordinate Geometry", marks: 6,
+    id: "unit-3",
+    unitNumber: 3,
+    title: "Coordinate Geometry",
+    marks: 6,
     topics: [
       "Review of coordinate geometry concepts",
       "Distance formula",
@@ -160,7 +232,10 @@ const units = [
     ]
   },
   {
-    id: "unit-4", unitNumber: 4, title: "Geometry", marks: 15,
+    id: "unit-4",
+    unitNumber: 4,
+    title: "Geometry",
+    marks: 15,
     topics: [
       "Similar triangles: definitions, examples and counterexamples",
       "Basic Proportionality Theorem: statement and proof",
@@ -172,7 +247,10 @@ const units = [
     ]
   },
   {
-    id: "unit-5", unitNumber: 5, title: "Trigonometry", marks: 12,
+    id: "unit-5",
+    unitNumber: 5,
+    title: "Trigonometry",
+    marks: 12,
     topics: [
       "Trigonometric ratios of an acute angle in a right-angled triangle",
       "Ratios at 0° and 90°; values at 30°, 45° and 60°",
@@ -182,7 +260,10 @@ const units = [
     ]
   },
   {
-    id: "unit-6", unitNumber: 6, title: "Mensuration", marks: 10,
+    id: "unit-6",
+    unitNumber: 6,
+    title: "Mensuration",
+    marks: 10,
     topics: [
       "Areas Related to Circles: areas of sectors and segments; area and perimeter problems",
       "Segment-area problems with central angles 60°, 90° and 120°",
@@ -190,7 +271,10 @@ const units = [
     ]
   },
   {
-    id: "unit-7", unitNumber: 7, title: "Statistics and Probability", marks: 11,
+    id: "unit-7",
+    unitNumber: 7,
+    title: "Statistics and Probability",
+    marks: 11,
     topics: [
       "Statistics: mean, median and mode of grouped data",
       "Mean by direct, assumed mean and step-deviation methods",
@@ -200,18 +284,17 @@ const units = [
     ]
   }
 ];
-  
 
 let authorizedAdmin = false;
 
-onAuthStateChanged(auth, user => {
+function updateAuthUI(user) {
   authorizedAdmin = Boolean(
     user &&
     user.email === ADMIN_EMAIL &&
     user.emailVerified
   );
 
-  importButton.hidden = !authorizedAdmin;
+  importSection.hidden = !authorizedAdmin;
   logoutButton.hidden = !user;
   loginForm.hidden = authorizedAdmin;
 
@@ -222,12 +305,15 @@ onAuthStateChanged(auth, user => {
       "Access denied. Use the verified admin account.";
   } else {
     statusBox.textContent =
-      "Admin signed in. Check the syllabus source before importing.";
+      "Admin signed in. Select a course. Review the official syllabus before importing.";
   }
-});
+}
+
+onAuthStateChanged(auth, updateAuthUI);
 
 loginForm.addEventListener("submit", async event => {
   event.preventDefault();
+  loginButton.disabled = true;
   statusBox.textContent = "Signing in...";
 
   try {
@@ -242,71 +328,106 @@ loginForm.addEventListener("submit", async event => {
   } catch (error) {
     statusBox.textContent =
       error.code === "auth/invalid-api-key"
-        ? "Firebase API key is missing. Copy the existing firebaseConfig."
+        ? "Firebase API key error. Check the existing project configuration."
         : error.message || "Sign-in failed.";
+  } finally {
+    loginButton.disabled = false;
   }
 });
 
 logoutButton.addEventListener("click", async () => {
-  await signOut(auth);
+  try {
+    await signOut(auth);
+  } catch (error) {
+    statusBox.textContent =
+      "Log out failed: " + (error.message || "Unknown error");
+  }
 });
 
 importButton.addEventListener("click", async () => {
-  if (!authorizedAdmin || !auth.currentUser?.emailVerified) {
+  if (!authorizedAdmin || !auth.currentUser?.emailVerified ||
+      auth.currentUser?.email !== ADMIN_EMAIL) {
     statusBox.textContent = "Verified admin login is required.";
     return;
   }
 
+  const course = courses[courseSelect.value];
+
+  if (!course) {
+    statusBox.textContent = "Please select a valid course.";
+    return;
+  }
+
   const confirmed = confirm(
-    "Import/update the 7 prepared units? All will remain pending review."
+    "Import/update 7 prepared units for " +
+    course.courseName + " (" + course.subjectCode + ")?\n\n" +
+    "Destination: syllabusDrafts/" + course.parentId +
+    "\n\nAll content will remain pending review. " +
+    "Check the prepared topics against the official syllabus first."
   );
 
   if (!confirmed) return;
 
   importButton.disabled = true;
-  statusBox.textContent = "Importing units...";
+  courseSelect.disabled = true;
+  statusBox.textContent = "Importing " + course.courseName + "...";
 
   try {
-    const parentRef = doc(db, "syllabusDrafts", parentId);
+    const parentRef = doc(
+      db, "syllabusDrafts", course.parentId
+    );
 
     await setDoc(parentRef, {
-      title: "CBSE Class 10 Mathematics",
+      title: course.title,
       board: "CBSE",
       className: "Class 10",
+      subject: "Mathematics",
+      courseName: course.courseName,
+      subjectCode: course.subjectCode,
       year: "2026–27",
       status: "pending_review",
-      chapters: 7,
+      chapters: units.length,
       verified: 0,
-      source: sourceUrl,
-      subjectCodes: ["041", "241"],
+      source: SOURCE_URL,
       importUpdatedAt: serverTimestamp()
     }, { merge: true });
 
     for (const unit of units) {
-      await setDoc(
-        doc(db, "syllabusDrafts", parentId, "units", unit.id),
-        {
-          ...unit,
-          subjectCodes: ["041", "241"],
-          status: "pending_review",
-          verified: false,
-          source: sourceUrl,
-          updatedAt: serverTimestamp()
-        },
-        { merge: true }
+      const unitRef = doc(
+        db,
+        "syllabusDrafts",
+        course.parentId,
+        "units",
+        unit.id
       );
+
+      await setDoc(unitRef, {
+        ...unit,
+        courseName: course.courseName,
+        subjectCode: course.subjectCode,
+        status: "pending_review",
+        verified: false,
+        source: SOURCE_URL,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
     }
 
     statusBox.textContent =
-      "Import completed: 7 units saved as pending_review.\n" +
-      "Next: compare every unit with the official PDF before review.";
+      "Import completed for " + course.courseName +
+      " (" + course.subjectCode + ").\n\n" +
+      units.length + " units saved as pending_review.\n" +
+      "Firestore path: syllabusDrafts/" + course.parentId +
+      "\n\nNext: check every topic against the official PDF. " +
+      "This importer does not publish or verify the syllabus.";
 
   } catch (error) {
     statusBox.textContent =
       "Import failed: " + (error.message || "Unknown error") +
-      "\nCheck the Firebase configuration and Firestore security rules.";
+      "\n\nCheck Firestore security rules and Firebase configuration. " +
+      "If the import stopped partway through, inspect Firestore before retrying.";
   } finally {
     importButton.disabled = false;
+    courseSelect.disabled = false;
   }
 });
 </script>
