@@ -132,20 +132,75 @@ const parentId = "cbse-class-10-mathematics";
 const sourceUrl =
   "https://cbseacademic.nic.in/web_material/CurriculumMain27/SecPart1/Maths_SecP1X_2026-27.pdf";
 
+
 const units = [
-  { id: "unit-1", unitNumber: 1, title: "Number Systems", marks: 6 },
-  { id: "unit-2", unitNumber: 2, title: "Algebra", marks: 20 },
-  { id: "unit-3", unitNumber: 3, title: "Coordinate Geometry", marks: 6 },
-  { id: "unit-4", unitNumber: 4, title: "Geometry", marks: 15 },
-  { id: "unit-5", unitNumber: 5, title: "Trigonometry", marks: 12 },
-  { id: "unit-6", unitNumber: 6, title: "Mensuration", marks: 10 },
   {
-    id: "unit-7",
-    unitNumber: 7,
-    title: "Statistics and Probability",
-    marks: 11
+    id: "unit-1", unitNumber: 1, title: "Number Systems", marks: 6,
+    topics: [
+      "Real Numbers",
+      "Fundamental Theorem of Arithmetic: statement, examples and applications",
+      "Proofs of irrationality of √2, √3 and √5"
+    ]
+  },
+  {
+    id: "unit-2", unitNumber: 2, title: "Algebra", marks: 20,
+    topics: [
+      "Polynomials: zeros and relationship between zeros and coefficients of quadratic polynomials",
+      "Pair of Linear Equations in Two Variables: graphical method, consistency, inconsistency, algebraic conditions, substitution and elimination methods, situational problems",
+      "Quadratic Equations: standard form, factorisation, quadratic formula, discriminant, nature of roots and situational problems",
+      "Arithmetic Progressions: nth term, sum of first n terms and daily-life applications"
+    ]
+  },
+  {
+    id: "unit-3", unitNumber: 3, title: "Coordinate Geometry", marks: 6,
+    topics: [
+      "Review of coordinate geometry concepts",
+      "Distance formula",
+      "Section formula for internal division"
+    ]
+  },
+  {
+    id: "unit-4", unitNumber: 4, title: "Geometry", marks: 15,
+    topics: [
+      "Similar triangles: definitions, examples and counterexamples",
+      "Basic Proportionality Theorem: statement and proof",
+      "Converse of Basic Proportionality Theorem: statement without proof",
+      "Similarity criteria AA, SSS and SAS: statements without proof",
+      "Tangent at a point of contact",
+      "Tangent perpendicular to the radius at the point of contact: theorem and proof",
+      "Lengths of tangents drawn from an external point to a circle are equal: theorem and proof"
+    ]
+  },
+  {
+    id: "unit-5", unitNumber: 5, title: "Trigonometry", marks: 12,
+    topics: [
+      "Trigonometric ratios of an acute angle in a right-angled triangle",
+      "Ratios at 0° and 90°; values at 30°, 45° and 60°",
+      "Relationships between trigonometric ratios",
+      "Identity sin²A + cos²A = 1: proof and applications",
+      "Heights and Distances: angles of elevation and depression; problems using angles 30°, 45° and 60°"
+    ]
+  },
+  {
+    id: "unit-6", unitNumber: 6, title: "Mensuration", marks: 10,
+    topics: [
+      "Areas Related to Circles: areas of sectors and segments; area and perimeter problems",
+      "Segment-area problems with central angles 60°, 90° and 120°",
+      "Surface Areas and Volumes: combinations of two cubes, cuboids, spheres, hemispheres, right circular cylinders and right circular cones"
+    ]
+  },
+  {
+    id: "unit-7", unitNumber: 7, title: "Statistics and Probability", marks: 11,
+    topics: [
+      "Statistics: mean, median and mode of grouped data",
+      "Mean by direct, assumed mean and step-deviation methods",
+      "Median and mode of grouped frequency distributions by algebraic method",
+      "Classical definition of probability",
+      "Simple problems on finding the probability of an event"
+    ]
   }
 ];
+  
 
 let authorizedAdmin = false;
 
