@@ -7,184 +7,453 @@
 <title>Study Tracker | Syllabus Approval</title>
 <style>
 *{box-sizing:border-box}
-body{margin:0;padding:18px;background:#100e1c;color:#f7f5ff;font-family:system-ui,sans-serif}
-main{max-width:760px;margin:20px auto;background:#191629;padding:20px;border:1px solid #7047ff;border-radius:16px}
+body{margin:0;padding:16px;background:#100e1c;color:#f7f5ff;font-family:system-ui,sans-serif}
+main{max-width:760px;margin:16px auto;background:#191629;padding:18px;border:1px solid #7047ff;border-radius:16px}
 input,button{width:100%;padding:12px;margin:8px 0;border-radius:9px;font:inherit}
 input{background:#090914;color:white;border:1px solid #49406a}
 button{background:#a78bfa;color:#130c22;font-weight:700;border:0;cursor:pointer}
-button:disabled{opacity:.5}
+button:disabled{opacity:.5;cursor:not-allowed}
+.secondary{background:#302849;color:#f7f5ff;border:1px solid #62518b}
 .card{border:1px solid #49406a;border-radius:12px;padding:14px;margin:14px 0;overflow-wrap:anywhere}
 .muted{color:#c5bddf;line-height:1.6}
 #status{white-space:pre-wrap;overflow-wrap:anywhere}
+.unit{padding:10px 0;border-bottom:1px solid #39304f}
+.unit:last-child{border-bottom:0}
+.good{color:#86efac}
+.bad{color:#fca5a5}
 [hidden]{display:none!important}
 </style>
 </head>
 <body>
 <main>
-<h1> Syllabus Approval </h1>
-<p class="muted">Review pending CBSE Class 10 Mathematics drafts. Approve only after checking the topics against the official syllabus.</p>
+<h1>Study Tracker — Syllabus Approval</h1>
+<p class="muted">
+Review CBSE Class 10 Mathematics drafts. Only approve a course after
+checking every topic against the official syllabus.
+</p>
+<p>
+<a style="color:#c4b5fd"
+href="https://cbseacademic.nic.in/web_material/CurriculumMain27/SecPart1/Maths_SecP1X_2026-27.pdf"
+target="_blank" rel="noopener">
+Open official CBSE Mathematics syllabus 2026–27
+</a>
+</p>
 
 <form id="loginForm">
-<label>Admin email</label>
+<label for="email">Admin email</label>
 <input id="email" type="email" required autocomplete="username">
-<label>Admin password</label>
+<label for="password">Admin password</label>
 <input id="password" type="password" required autocomplete="current-password">
 <button id="loginButton">Sign in</button>
 </form>
 
 <section id="panel" hidden>
-<p id="welcome"></p>
+<p id="welcome" class="muted"></p>
 <button id="loadButton">Load pending drafts</button>
 <div id="drafts"></div>
-<button id="logoutButton">Log out</button>
+<button id="logoutButton" class="secondary">Log out</button>
 </section>
-<p id="status" class="muted">Please sign in with the verified admin account.</p>
+
+<p id="status" class="muted" role="status" aria-live="polite">
+Please sign in with the verified admin account.
+</p>
 </main>
 
 <script type="module">
-import {initializeApp} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-app.js";
+import {initializeApp}
+ from "https://www.gstatic.com/firebasejs/13.0.0/firebase-app.js";
 import {
- getAuth,signInWithEmailAndPassword,onAuthStateChanged,signOut
+ getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut
 } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-auth.js";
 import {
- getFirestore,collection,doc,getDoc,getDocs,writeBatch,serverTimestamp
+ getFirestore, collection, doc, getDoc, getDocs,
+ writeBatch, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
 
-const firebaseConfig={
- apiKey:"AIzaSyD3Eakk0Q1qk8u2zUWJDkpUUUCgMBbJMWs",
- authDomain:"study-tracker-dacd7.firebaseapp.com",
- projectId:"study-tracker-dacd7",
- storageBucket:"study-tracker-dacd7.firebasestorage.app",
- messagingSenderId:"717578428619",
- appId:"1:717578428619:web:0202f68bc2c4279b6e7b4e"
+const firebaseConfig = {
+ apiKey: "AIzaSyD3Eakk0Q1qk8u2zUWJDkpUUUCgMBbJMWs",
+ authDomain: "study-tracker-dacd7.firebaseapp.com",
+ projectId: "study-tracker-dacd7",
+ storageBucket: "study-tracker-dacd7.firebasestorage.app",
+ messagingSenderId: "717578428619",
+ appId: "1:717578428619:web:0202f68bc2c4279b6e7b4e"
 };
 
-const ADMIN="instagramid1994@gmail.com";
-const app=initializeApp(firebaseConfig);
-const auth=getAuth(app);
-const db=getFirestore(app);
-const $=id=>document.getElementById(id);
-let isAdmin=false;
-let busy=false;
+const ADMIN = "instagramid1994@gmail.com";
+const COURSES = {
+ "cbse-class-10-mathematics-basic-241": {
+  name: "Basic Mathematics",
+  code: "241"
+ },
+ "cbse-class-10-mathematics-standard-041": {
+  name: "Standard Mathematics",
+  code: "041"
+ }
+};
 
-function checkAdmin(user){
- isAdmin=!!(user && user.email===ADMIN && user.emailVerified);
- $("loginForm").hidden=isAdmin;
- $("panel").hidden=!isAdmin;
- $("welcome").textContent=isAdmin?"Signed in as verified admin: "+ADMIN:"";
- $("status").textContent=!user?"Please sign in.":isAdmin?"Admin access confirmed. Load pending drafts to review.":"Access denied. Use the verified admin account.";
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const $ = id => document.getElementById(id);
+
+let isAdmin = false;
+let busy = false;
+
+function setStatus(message, type = "") {
+ $("status").textContent = message;
+ $("status").className = "muted " + type;
 }
-onAuthStateChanged(auth,checkAdmin);
 
-$("loginForm").addEventListener("submit",async e=>{
- e.preventDefault();
- $("loginButton").disabled=true;
- $("status").textContent="Signing in...";
- try{
-  const email=$("email").value.trim();
-  if(email!==ADMIN) throw new Error("Use the configured admin email.");
-  await signInWithEmailAndPassword(auth,email,$("password").value);
- }catch(err){$("status").textContent=err.message||"Sign-in failed."}
- finally{$("loginButton").disabled=false}
+function verifyAdmin() {
+ const user = auth.currentUser;
+ if (!isAdmin || !user || user.email !== ADMIN || !user.emailVerified) {
+  throw new Error("Verified admin login is required.");
+ }
+}
+
+function updateAuthUI(user) {
+ isAdmin = !!(
+  user &&
+  user.email === ADMIN &&
+  user.emailVerified
+ );
+ $("loginForm").hidden = isAdmin;
+ $("panel").hidden = !isAdmin;
+ $("welcome").textContent = isAdmin
+  ? "Signed in as verified admin: " + ADMIN
+  : "";
+ if (!user) setStatus("Please sign in.");
+ else if (!isAdmin) setStatus("Access denied. Use the verified admin account.", "bad");
+ else setStatus("Admin access confirmed. Load pending drafts to review.");
+}
+
+onAuthStateChanged(auth, updateAuthUI);
+
+$("loginForm").addEventListener("submit", async event => {
+ event.preventDefault();
+ $("loginButton").disabled = true;
+ setStatus("Signing in...");
+ try {
+  const email = $("email").value.trim().toLowerCase();
+  if (email !== ADMIN) {
+   throw new Error("Use the configured admin email.");
+  }
+  await signInWithEmailAndPassword(auth, email, $("password").value);
+ } catch (error) {
+  setStatus("Sign-in failed: " + (error.message || "Unknown error"), "bad");
+ } finally {
+  $("loginButton").disabled = false;
+ }
 });
 
-$("logoutButton").addEventListener("click",()=>signOut(auth));
+$("logoutButton").addEventListener("click", async () => {
+ try {
+  await signOut(auth);
+  $("drafts").replaceChildren();
+  setStatus("Logged out.");
+ } catch (error) {
+  setStatus("Could not log out: " + error.message, "bad");
+ }
+});
 
-function verifyAdmin(){
- if(!isAdmin||auth.currentUser?.email!==ADMIN||!auth.currentUser?.emailVerified)
-  throw new Error("Verified admin login is required.");
+function getUnitNumber(unit) {
+ return Number(unit.unitNumber);
 }
 
-async function loadDrafts(){
+function validateDraft(id, data, unitDocs) {
+ const errors = [];
+ const expected = COURSES[id];
+
+ if (!expected) {
+  errors.push("Unknown course ID. Only the configured Basic and Standard drafts can be approved.");
+  return errors;
+ }
+
+ if (data.status !== "pending_review") {
+  errors.push("Draft is not pending_review.");
+ }
+
+ if (data.courseName !== expected.name) {
+  errors.push("Course name does not match the expected course.");
+ }
+
+ if (String(data.subjectCode || "") !== expected.code) {
+  errors.push("Course code does not match " + expected.code + ".");
+ }
+
+ if (!data.title || typeof data.title !== "string") {
+  errors.push("Course title is missing.");
+ }
+
+ if (unitDocs.length !== 7) {
+  errors.push("Expected exactly 7 units; found " + unitDocs.length + ".");
+ }
+
+ const numbers = [];
+ const unitIds = new Set();
+ let totalMarks = 0;
+
+ for (const item of unitDocs) {
+  const u = item.data();
+
+  if (unitIds.has(item.id)) {
+   errors.push("Duplicate unit ID: " + item.id);
+  }
+  unitIds.add(item.id);
+
+  const number = getUnitNumber(u);
+  if (!Number.isInteger(number) || number < 1 || number > 7) {
+   errors.push("Invalid unit number in " + item.id + ".");
+  } else if (numbers.includes(number)) {
+   errors.push("Duplicate unit number: " + number + ".");
+  } else {
+   numbers.push(number);
+  }
+
+  if (!u.title || typeof u.title !== "string") {
+   errors.push("Missing title in unit " + item.id + ".");
+  }
+
+  if (!Number.isFinite(Number(u.marks)) || Number(u.marks) <= 0) {
+   errors.push("Invalid marks in unit " + item.id + ".");
+  } else {
+   totalMarks += Number(u.marks);
+  }
+
+  if (!Array.isArray(u.topics) || u.topics.length === 0) {
+   errors.push("Missing topics in unit " + item.id + ".");
+  } else if (u.topics.some(topic =>
+   typeof topic !== "string" || !topic.trim()
+  )) {
+   errors.push("Empty or invalid topic in unit " + item.id + ".");
+  }
+ }
+
+ numbers.sort((a, b) => a - b);
+ if (numbers.length === 7 &&
+     numbers.some((number, index) => number !== index + 1)) {
+  errors.push("Unit numbers must be 1 through 7.");
+ }
+
+ if (totalMarks !== 80) {
+  errors.push("Unit marks total " + totalMarks + "; expected 80.");
+ }
+
+ return errors;
+}
+
+async function loadDrafts() {
  verifyAdmin();
- $("loadButton").disabled=true;
+ $("loadButton").disabled = true;
  $("drafts").replaceChildren();
- $("status").textContent="Loading drafts...";
- try{
-  const snap=await getDocs(collection(db,"syllabusDrafts"));
-  let count=0;
-  for(const parent of snap.docs){
-   const data=parent.data();
-   if(data.status!=="pending_review") continue;
+ setStatus("Loading pending drafts...");
+
+ try {
+  const snapshot = await getDocs(collection(db, "syllabusDrafts"));
+  let count = 0;
+
+  for (const parent of snapshot.docs) {
+   const data = parent.data();
+   if (data.status !== "pending_review") continue;
+
    count++;
-   const card=document.createElement("article");
-   card.className="card";
-   const title=document.createElement("h2");
-   title.textContent=data.title||parent.id;
+   const unitsSnapshot = await getDocs(
+    collection(db, "syllabusDrafts", parent.id, "units")
+   );
+
+   const units = [...unitsSnapshot.docs].sort(
+    (a, b) => (Number(a.data().unitNumber) || 0) -
+              (Number(b.data().unitNumber) || 0)
+   );
+
+   const errors = validateDraft(parent.id, data, units);
+   const card = document.createElement("article");
+   card.className = "card";
+
+   const title = document.createElement("h2");
+   title.textContent = data.title || parent.id;
    card.append(title);
-   const info=document.createElement("p");
-   info.className="muted";
-   info.textContent=`Course: ${data.courseName||"Not specified"} | Code: ${data.subjectCode||"—"} | Status: ${data.status}`;
+
+   const info = document.createElement("p");
+   info.className = "muted";
+   info.textContent =
+    "Course: " + (data.courseName || "Not specified") +
+    " | Code: " + (data.subjectCode || "—") +
+    " | Status: " + data.status;
    card.append(info);
-   const unitsSnap=await getDocs(collection(db,"syllabusDrafts",parent.id,"units"));
-   const list=document.createElement("ol");
-   unitsSnap.docs.sort((a,b)=>(a.data().unitNumber||0)-(b.data().unitNumber||0)).forEach(unitDoc=>{
-    const u=unitDoc.data();
-    const li=document.createElement("li");
-    li.textContent=`${u.title||unitDoc.id} — ${u.marks??"?"} marks. Topics: ${(u.topics||[]).join("; ")}`;
-    list.append(li);
-   });
-   card.append(list);
-   const warning=document.createElement("p");
-   warning.className="muted";
-   warning.textContent="Review every topic against the official CBSE PDF before approval.";
+
+   const summary = document.createElement("p");
+   summary.className = errors.length ? "bad" : "good";
+   summary.textContent = errors.length
+    ? "Automatic checks failed. Publication blocked:\n• " + errors.join("\n• ")
+    : "Basic structure checks passed: 7 units and 80 marks. This does not verify topic accuracy.";
+   card.append(summary);
+
+   for (const unitDoc of units) {
+    const u = unitDoc.data();
+    const unit = document.createElement("div");
+    unit.className = "unit";
+
+    const heading = document.createElement("strong");
+    heading.textContent =
+     (u.title || unitDoc.id) + " — " + (u.marks ?? "?") + " marks";
+    unit.append(heading);
+
+    const topics = document.createElement("p");
+    topics.className = "muted";
+    topics.textContent = Array.isArray(u.topics)
+     ? u.topics.join("; ")
+     : "No topics recorded.";
+    unit.append(topics);
+    card.append(unit);
+   }
+
+   const warning = document.createElement("p");
+   warning.className = "muted";
+   warning.textContent =
+    "Before approval, compare every topic with the official PDF and confirm Firestore security rules.";
    card.append(warning);
-   const approve=document.createElement("button");
-   approve.textContent="Approve and publish this course";
-   approve.addEventListener("click",()=>approveCourse(parent.id,data,unitsSnap.docs,approve));
+
+   const approve = document.createElement("button");
+   approve.textContent = errors.length
+    ? "Publication blocked — fix draft first"
+    : "Approve and publish this course";
+   approve.disabled = errors.length > 0;
+   if (!errors.length) {
+    approve.addEventListener("click", () =>
+     approveCourse(parent.id, data, units, approve)
+    );
+   }
    card.append(approve);
    $("drafts").append(card);
   }
-  $("status").textContent=count?`Found ${count} pending course(s). Review carefully before approving.`:"No pending drafts found.";
- }catch(err){
-  $("status").textContent="Could not load drafts: "+(err.message||"Unknown error")+"\nCheck Firestore rules.";
- }finally{$("loadButton").disabled=false}
-}
-$("loadButton").addEventListener("click",loadDrafts);
 
-async function approveCourse(id,data,unitDocs,button){
+  setStatus(count
+   ? "Found " + count + " pending course(s). Review each draft carefully."
+   : "No pending drafts found.");
+ } catch (error) {
+  setStatus(
+   "Could not load drafts: " + (error.message || "Unknown error") +
+   "\nCheck your Firestore rules and admin access.",
+   "bad"
+  );
+ } finally {
+  $("loadButton").disabled = false;
+ }
+}
+
+$("loadButton").addEventListener("click", loadDrafts);
+
+async function approveCourse(id, data, unitDocs, button) {
  verifyAdmin();
- if(busy)return;
- if(!unitDocs.length){$("status").textContent="Cannot publish: this draft has no units.";return}
- const confirmText=`You are approving ${data.title||id}.\n\nHave you checked every topic against the official CBSE syllabus?`;
- if(!confirm(confirmText))return;
- busy=true;button.disabled=true;
- try{
-  const parentRef=doc(db,"publishedSyllabi",id);
-  const old=await getDoc(parentRef);
-  if(old.exists()&&old.data().status==="published"){
-   throw new Error("This course is already published. No changes made.");
+ if (busy) return;
+
+ const errors = validateDraft(id, data, unitDocs);
+ if (errors.length) {
+  setStatus("Publication blocked:\n• " + errors.join("\n• "), "bad");
+  return;
+ }
+
+ const expected = COURSES[id];
+ const confirmation =
+  "You are about to publish " + expected.name + " (" + expected.code + ").\n\n" +
+  "This checks course details, 7 units, topics fields and 80 marks only.\n" +
+  "Have you personally checked every topic against the official CBSE PDF?\n\n" +
+  "Continue only if the syllabus and Firestore rules have been verified.";
+
+ if (!confirm(confirmation)) return;
+
+ busy = true;
+ button.disabled = true;
+
+ try {
+  verifyAdmin();
+
+  const parentRef = doc(db, "publishedSyllabi", id);
+  const existing = await getDoc(parentRef);
+
+  if (existing.exists() && existing.data().status === "published") {
+   throw new Error("This course is already published. No changes were made.");
   }
-  const batch=writeBatch(db);
-  batch.set(parentRef,{
-   ...data,status:"published",verified:true,
-   approvedBy:ADMIN,approvedAt:serverTimestamp(),
-   sourceDraftId:id
+
+  // Re-read the draft immediately before publishing.
+  const latestParent = await getDoc(doc(db, "syllabusDrafts", id));
+  if (!latestParent.exists()) throw new Error("Draft no longer exists.");
+
+  const latestData = latestParent.data();
+  if (latestData.status !== "pending_review") {
+   throw new Error("Draft status changed. Reload and review again.");
+  }
+
+  const latestUnitsSnapshot = await getDocs(
+   collection(db, "syllabusDrafts", id, "units")
+  );
+  const latestUnits = latestUnitsSnapshot.docs;
+  const latestErrors = validateDraft(id, latestData, latestUnits);
+
+  if (latestErrors.length) {
+   throw new Error("Latest draft failed checks:\n• " + latestErrors.join("\n• "));
+  }
+
+  const batch = writeBatch(db);
+  const approvedAt = serverTimestamp();
+
+  batch.set(parentRef, {
+   ...latestData,
+   status: "published",
+   verified: true,
+   approvedBy: ADMIN,
+   approvedAt,
+   sourceDraftId: id
   });
-  for(const unitDoc of unitDocs){
-   const u=unitDoc.data();
-   batch.set(doc(db,"publishedSyllabi",id,"units",unitDoc.id),{
-    ...u,status:"published",verified:true,
-    approvedBy:ADMIN,approvedAt:serverTimestamp()
+
+  for (const unitDoc of latestUnits) {
+   batch.set(doc(db, "publishedSyllabi", id, "units", unitDoc.id), {
+    ...unitDoc.data(),
+    status: "published",
+    verified: true,
+    approvedBy: ADMIN,
+    approvedAt
    });
   }
-  batch.update(doc(db,"syllabusDrafts",id),{
-   status:"published",verified:1,
-   approvedBy:ADMIN,approvedAt:serverTimestamp()
+
+  batch.update(doc(db, "syllabusDrafts", id), {
+   status: "published",
+   verified: true,
+   approvedBy: ADMIN,
+   approvedAt
   });
-  unitDocs.forEach(u=>{
-   batch.update(doc(db,"syllabusDrafts",id,"units",u.id),{
-    status:"published",verified:true,
-    approvedBy:ADMIN,approvedAt:serverTimestamp()
-   });
-  });
+
+  for (const unitDoc of latestUnits) {
+   batch.update(
+    doc(db, "syllabusDrafts", id, "units", unitDoc.id),
+    {
+     status: "published",
+     verified: true,
+     approvedBy: ADMIN,
+     approvedAt
+    }
+   );
+  }
+
   await batch.commit();
-  $("status").textContent="Published successfully to publishedSyllabi/"+id+".\nStudent access still requires the matching Firestore read rules and website integration.";
+
+  setStatus(
+   "Published successfully to publishedSyllabi/" + id + ".\n" +
+   "Student access is not confirmed. The student website and Firestore read rules must also be configured."
+  );
+
   await loadDrafts();
- }catch(err){
-  $("status").textContent="Approval failed: "+(err.message||"Unknown error")+"\nNo successful publication was confirmed. Check Firestore rules.";
-  button.disabled=false;
- }finally{busy=false}
+ } catch (error) {
+  setStatus(
+   "Approval failed: " + (error.message || "Unknown error") +
+   "\nPublication was not confirmed. Check Firestore rules and reload the drafts.",
+   "bad"
+  );
+  button.disabled = false;
+ } finally {
+  busy = false;
+ }
 }
 </script>
 </body>
