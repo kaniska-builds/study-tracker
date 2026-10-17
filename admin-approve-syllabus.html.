@@ -1,0 +1,191 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Study Tracker | Syllabus Approval</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;padding:18px;background:#100e1c;color:#f7f5ff;font-family:system-ui,sans-serif}
+main{max-width:760px;margin:20px auto;background:#191629;padding:20px;border:1px solid #7047ff;border-radius:16px}
+input,button{width:100%;padding:12px;margin:8px 0;border-radius:9px;font:inherit}
+input{background:#090914;color:white;border:1px solid #49406a}
+button{background:#a78bfa;color:#130c22;font-weight:700;border:0;cursor:pointer}
+button:disabled{opacity:.5}
+.card{border:1px solid #49406a;border-radius:12px;padding:14px;margin:14px 0;overflow-wrap:anywhere}
+.muted{color:#c5bddf;line-height:1.6}
+#status{white-space:pre-wrap;overflow-wrap:anywhere}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main>
+<h1> Syllabus Approval </h1>
+<p class="muted">Review pending CBSE Class 10 Mathematics drafts. Approve only after checking the topics against the official syllabus.</p>
+
+<form id="loginForm">
+<label>Admin email</label>
+<input id="email" type="email" required autocomplete="username">
+<label>Admin password</label>
+<input id="password" type="password" required autocomplete="current-password">
+<button id="loginButton">Sign in</button>
+</form>
+
+<section id="panel" hidden>
+<p id="welcome"></p>
+<button id="loadButton">Load pending drafts</button>
+<div id="drafts"></div>
+<button id="logoutButton">Log out</button>
+</section>
+<p id="status" class="muted">Please sign in with the verified admin account.</p>
+</main>
+
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-app.js";
+import {
+ getAuth,signInWithEmailAndPassword,onAuthStateChanged,signOut
+} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-auth.js";
+import {
+ getFirestore,collection,doc,getDoc,getDocs,writeBatch,serverTimestamp
+} from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
+
+const firebaseConfig={
+ apiKey:"AIzaSyD3Eakk0Q1qk8u2zUWJDkpUUUCgMBbJMWs",
+ authDomain:"study-tracker-dacd7.firebaseapp.com",
+ projectId:"study-tracker-dacd7",
+ storageBucket:"study-tracker-dacd7.firebasestorage.app",
+ messagingSenderId:"717578428619",
+ appId:"1:717578428619:web:0202f68bc2c4279b6e7b4e"
+};
+
+const ADMIN="instagramid1994@gmail.com";
+const app=initializeApp(firebaseConfig);
+const auth=getAuth(app);
+const db=getFirestore(app);
+const $=id=>document.getElementById(id);
+let isAdmin=false;
+let busy=false;
+
+function checkAdmin(user){
+ isAdmin=!!(user && user.email===ADMIN && user.emailVerified);
+ $("loginForm").hidden=isAdmin;
+ $("panel").hidden=!isAdmin;
+ $("welcome").textContent=isAdmin?"Signed in as verified admin: "+ADMIN:"";
+ $("status").textContent=!user?"Please sign in.":isAdmin?"Admin access confirmed. Load pending drafts to review.":"Access denied. Use the verified admin account.";
+}
+onAuthStateChanged(auth,checkAdmin);
+
+$("loginForm").addEventListener("submit",async e=>{
+ e.preventDefault();
+ $("loginButton").disabled=true;
+ $("status").textContent="Signing in...";
+ try{
+  const email=$("email").value.trim();
+  if(email!==ADMIN) throw new Error("Use the configured admin email.");
+  await signInWithEmailAndPassword(auth,email,$("password").value);
+ }catch(err){$("status").textContent=err.message||"Sign-in failed."}
+ finally{$("loginButton").disabled=false}
+});
+
+$("logoutButton").addEventListener("click",()=>signOut(auth));
+
+function verifyAdmin(){
+ if(!isAdmin||auth.currentUser?.email!==ADMIN||!auth.currentUser?.emailVerified)
+  throw new Error("Verified admin login is required.");
+}
+
+async function loadDrafts(){
+ verifyAdmin();
+ $("loadButton").disabled=true;
+ $("drafts").replaceChildren();
+ $("status").textContent="Loading drafts...";
+ try{
+  const snap=await getDocs(collection(db,"syllabusDrafts"));
+  let count=0;
+  for(const parent of snap.docs){
+   const data=parent.data();
+   if(data.status!=="pending_review") continue;
+   count++;
+   const card=document.createElement("article");
+   card.className="card";
+   const title=document.createElement("h2");
+   title.textContent=data.title||parent.id;
+   card.append(title);
+   const info=document.createElement("p");
+   info.className="muted";
+   info.textContent=`Course: ${data.courseName||"Not specified"} | Code: ${data.subjectCode||"—"} | Status: ${data.status}`;
+   card.append(info);
+   const unitsSnap=await getDocs(collection(db,"syllabusDrafts",parent.id,"units"));
+   const list=document.createElement("ol");
+   unitsSnap.docs.sort((a,b)=>(a.data().unitNumber||0)-(b.data().unitNumber||0)).forEach(unitDoc=>{
+    const u=unitDoc.data();
+    const li=document.createElement("li");
+    li.textContent=`${u.title||unitDoc.id} — ${u.marks??"?"} marks. Topics: ${(u.topics||[]).join("; ")}`;
+    list.append(li);
+   });
+   card.append(list);
+   const warning=document.createElement("p");
+   warning.className="muted";
+   warning.textContent="Review every topic against the official CBSE PDF before approval.";
+   card.append(warning);
+   const approve=document.createElement("button");
+   approve.textContent="Approve and publish this course";
+   approve.addEventListener("click",()=>approveCourse(parent.id,data,unitsSnap.docs,approve));
+   card.append(approve);
+   $("drafts").append(card);
+  }
+  $("status").textContent=count?`Found ${count} pending course(s). Review carefully before approving.`:"No pending drafts found.";
+ }catch(err){
+  $("status").textContent="Could not load drafts: "+(err.message||"Unknown error")+"\nCheck Firestore rules.";
+ }finally{$("loadButton").disabled=false}
+}
+$("loadButton").addEventListener("click",loadDrafts);
+
+async function approveCourse(id,data,unitDocs,button){
+ verifyAdmin();
+ if(busy)return;
+ if(!unitDocs.length){$("status").textContent="Cannot publish: this draft has no units.";return}
+ const confirmText=`You are approving ${data.title||id}.\n\nHave you checked every topic against the official CBSE syllabus?`;
+ if(!confirm(confirmText))return;
+ busy=true;button.disabled=true;
+ try{
+  const parentRef=doc(db,"publishedSyllabi",id);
+  const old=await getDoc(parentRef);
+  if(old.exists()&&old.data().status==="published"){
+   throw new Error("This course is already published. No changes made.");
+  }
+  const batch=writeBatch(db);
+  batch.set(parentRef,{
+   ...data,status:"published",verified:true,
+   approvedBy:ADMIN,approvedAt:serverTimestamp(),
+   sourceDraftId:id
+  });
+  for(const unitDoc of unitDocs){
+   const u=unitDoc.data();
+   batch.set(doc(db,"publishedSyllabi",id,"units",unitDoc.id),{
+    ...u,status:"published",verified:true,
+    approvedBy:ADMIN,approvedAt:serverTimestamp()
+   });
+  }
+  batch.update(doc(db,"syllabusDrafts",id),{
+   status:"published",verified:1,
+   approvedBy:ADMIN,approvedAt:serverTimestamp()
+  });
+  unitDocs.forEach(u=>{
+   batch.update(doc(db,"syllabusDrafts",id,"units",u.id),{
+    status:"published",verified:true,
+    approvedBy:ADMIN,approvedAt:serverTimestamp()
+   });
+  });
+  await batch.commit();
+  $("status").textContent="Published successfully to publishedSyllabi/"+id+".\nStudent access still requires the matching Firestore read rules and website integration.";
+  await loadDrafts();
+ }catch(err){
+  $("status").textContent="Approval failed: "+(err.message||"Unknown error")+"\nNo successful publication was confirmed. Check Firestore rules.";
+  button.disabled=false;
+ }finally{busy=false}
+}
+</script>
+</body>
+</html>
