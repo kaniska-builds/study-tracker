@@ -4,26 +4,29 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Study Tracker | Syllabus Importer</title>
+  <title>Study Tracker | CBSE Syllabus Importer</title>
   <style>
     * { box-sizing: border-box; }
 
     body {
       margin: 0;
-      padding: 24px;
+      padding: 20px;
       background: #090914;
       color: #f4f1ff;
       font-family: system-ui, sans-serif;
     }
 
     main {
-      max-width: 650px;
-      margin: 30px auto;
+      max-width: 720px;
+      margin: 24px auto;
       padding: 22px;
       background: #171326;
       border: 1px solid #7047ff;
       border-radius: 16px;
     }
+
+    h1 { font-size: 1.6rem; }
+    h2 { font-size: 1.15rem; }
 
     input, select, button {
       width: 100%;
@@ -48,8 +51,18 @@
     }
 
     button:disabled {
-      opacity: 0.55;
+      opacity: .55;
       cursor: not-allowed;
+    }
+
+    label {
+      display: block;
+      margin-top: 8px;
+    }
+
+    .note {
+      color: #c5bddf;
+      line-height: 1.6;
     }
 
     #status {
@@ -58,59 +71,67 @@
       line-height: 1.6;
     }
 
-    .note {
-      color: #c5bddf;
-      line-height: 1.6;
+    .unit {
+      border: 1px solid #49406a;
+      padding: 12px;
+      margin: 12px 0;
+      border-radius: 10px;
     }
 
-    label {
-      display: block;
-      margin-top: 8px;
-    }
+    .unit li { margin: 7px 0; }
 
     [hidden] { display: none !important; }
   </style>
 </head>
-
 <body>
 <main>
   <h1>CBSE Syllabus Importer</h1>
 
   <p class="note">
-    Import prepared Class 10 Mathematics units into Firestore.
-    Basic and Standard courses use separate document paths.
-    Imported content remains pending review and is not
-    automatically verified against the official PDF.
+    Import prepared CBSE Class 10 Mathematics units into
+    Firestore. Basic and Standard use separate draft paths.
+    All imports remain pending review. Importing does not
+    verify or publish the syllabus.
+  </p>
+
+  <p>
+    <a style="color:#a5c8ff"
+       href="https://cbseacademic.nic.in/web_material/CurriculumMain27/SecPart1/Maths_SecP1X_2026-27.pdf"
+       target="_blank" rel="noopener noreferrer">
+      Open official CBSE Mathematics syllabus 2026–27
+    </a>
   </p>
 
   <form id="loginForm">
     <label for="email">Admin email</label>
-    <input
-      id="email"
-      type="email"
-      required
+    <input id="email" type="email" required
       autocomplete="username"
-      placeholder="Your verified admin email"
-    >
+      placeholder="Verified admin email">
 
     <label for="password">Admin password</label>
-    <input
-      id="password"
-      type="password"
-      required
+    <input id="password" type="password" required
       autocomplete="current-password"
-      placeholder="Your Firebase password"
-    >
+      placeholder="Firebase password">
 
     <button id="loginButton" type="submit">Sign in</button>
   </form>
 
   <section id="importSection" hidden>
+    <p id="signedIn"></p>
+
     <label for="courseSelect">Choose Mathematics course</label>
     <select id="courseSelect">
       <option value="basic">Mathematics Basic (241)</option>
       <option value="standard">Mathematics Standard (041)</option>
     </select>
+
+    <div id="preview"></div>
+
+    <p class="note">
+      Review every unit against the official PDF before importing.
+      Existing unit documents with the same IDs will be updated.
+      Both courses remain pending_review after import.
+    </p>
 
     <button id="importButton" type="button">
       Import / Update 7 Units
@@ -121,18 +142,6 @@
 
   <p id="status" role="status" aria-live="polite">
     Please sign in first.
-  </p>
-
-  <p class="note">
-    Source:
-    <a
-      style="color:#a5c8ff"
-      href="https://cbseacademic.nic.in/web_material/CurriculumMain27/SecPart1/Maths_SecP1X_2026-27.pdf"
-      target="_blank"
-      rel="noopener noreferrer"
-    >
-      Official CBSE Mathematics syllabus PDF
-    </a>
   </p>
 </main>
 
@@ -172,13 +181,16 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-const statusBox = document.getElementById("status");
-const loginForm = document.getElementById("loginForm");
-const loginButton = document.getElementById("loginButton");
-const importSection = document.getElementById("importSection");
-const courseSelect = document.getElementById("courseSelect");
-const importButton = document.getElementById("importButton");
-const logoutButton = document.getElementById("logoutButton");
+const $ = id => document.getElementById(id);
+
+const loginForm = $("loginForm");
+const loginButton = $("loginButton");
+const importSection = $("importSection");
+const courseSelect = $("courseSelect");
+const importButton = $("importButton");
+const logoutButton = $("logoutButton");
+const statusBox = $("status");
+const preview = $("preview");
 
 const courses = {
   basic: {
@@ -187,7 +199,6 @@ const courses = {
     courseName: "Basic Mathematics",
     subjectCode: "241"
   },
-
   standard: {
     parentId: "cbse-class-10-mathematics-standard-041",
     title: "CBSE Class 10 Mathematics Standard",
@@ -196,6 +207,10 @@ const courses = {
   }
 };
 
+/*
+ * Prepared topics based on the official CBSE 2026–27 PDF.
+ * Review the source PDF before approving any draft.
+ */
 const units = [
   {
     id: "unit-1",
@@ -205,7 +220,7 @@ const units = [
     topics: [
       "Real Numbers",
       "Fundamental Theorem of Arithmetic: statement, examples and applications",
-      "Proofs of irrationality of √2, √3 and √5"
+      "Proofs of irrationality of √2, √3 and √5; similar examples include 3 + 2√5"
     ]
   },
   {
@@ -215,9 +230,9 @@ const units = [
     marks: 20,
     topics: [
       "Polynomials: zeros and relationship between zeros and coefficients of quadratic polynomials",
-      "Pair of Linear Equations in Two Variables: graphical method, consistency, inconsistency, algebraic conditions, substitution and elimination methods, situational problems",
-      "Quadratic Equations: standard form, factorisation, quadratic formula, discriminant, nature of roots and situational problems",
-      "Arithmetic Progressions: nth term, sum of first n terms and daily-life applications"
+      "Pair of Linear Equations in Two Variables: graphical solution, consistency and inconsistency, algebraic conditions for number of solutions, substitution and elimination methods, simple situational problems",
+      "Quadratic Equations: standard form ax² + bx + c = 0, a ≠ 0; real roots only; factorisation and quadratic formula; discriminant and nature of roots; day-to-day situational problems",
+      "Arithmetic Progressions: motivation, derivation of nth term and sum of first n terms, and daily-life applications"
     ]
   },
   {
@@ -240,9 +255,9 @@ const units = [
       "Similar triangles: definitions, examples and counterexamples",
       "Basic Proportionality Theorem: statement and proof",
       "Converse of Basic Proportionality Theorem: statement without proof",
-      "Similarity criteria AA, SSS and SAS: statements without proof",
-      "Tangent at a point of contact",
-      "Tangent perpendicular to the radius at the point of contact: theorem and proof",
+      "Similarity criteria: AA, SSS and SAS; statements without proof as specified in the syllabus",
+      "Tangents to a circle at a point of contact",
+      "The tangent at a point of a circle is perpendicular to the radius through the point of contact: theorem and proof",
       "Lengths of tangents drawn from an external point to a circle are equal: theorem and proof"
     ]
   },
@@ -252,11 +267,11 @@ const units = [
     title: "Trigonometry",
     marks: 12,
     topics: [
-      "Trigonometric ratios of an acute angle in a right-angled triangle",
-      "Ratios at 0° and 90°; values at 30°, 45° and 60°",
+      "Trigonometric ratios of an acute angle in a right-angled triangle; proof that ratios are well-defined",
+      "Ratios defined at 0° and 90°; values of ratios at 30°, 45° and 60°",
       "Relationships between trigonometric ratios",
-      "Identity sin²A + cos²A = 1: proof and applications",
-      "Heights and Distances: angles of elevation and depression; problems using angles 30°, 45° and 60°"
+      "Proof and applications of sin²A + cos²A = 1; only simple identities",
+      "Heights and Distances: angles of elevation and depression; simple problems involving no more than two right triangles and angles 30°, 45° and 60°"
     ]
   },
   {
@@ -265,9 +280,9 @@ const units = [
     title: "Mensuration",
     marks: 10,
     topics: [
-      "Areas Related to Circles: areas of sectors and segments; area and perimeter problems",
-      "Segment-area problems with central angles 60°, 90° and 120°",
-      "Surface Areas and Volumes: combinations of two cubes, cuboids, spheres, hemispheres, right circular cylinders and right circular cones"
+      "Areas Related to Circles: areas of sectors and segments",
+      "Area and perimeter/circumference problems for the specified plane figures; segment-area questions restricted to central angles 60°, 90° and 120°",
+      "Surface Areas and Volumes: combinations of any two of these solids—cubes, cuboids, spheres, hemispheres, right circular cylinders and right circular cones"
     ]
   },
   {
@@ -276,8 +291,8 @@ const units = [
     title: "Statistics and Probability",
     marks: 11,
     topics: [
-      "Statistics: mean, median and mode of grouped data",
-      "Mean by direct, assumed mean and step-deviation methods",
+      "Statistics: mean, median and mode of grouped data; avoid bimodal situations",
+      "Mean of grouped frequency distributions by direct, assumed mean and step-deviation methods",
       "Median and mode of grouped frequency distributions by algebraic method",
       "Classical definition of probability",
       "Simple problems on finding the probability of an event"
@@ -285,7 +300,14 @@ const units = [
   }
 ];
 
+const totalMarks = units.reduce((sum, unit) => sum + unit.marks, 0);
+
+if (units.length !== 7 || totalMarks !== 80) {
+  throw new Error("Syllabus structure check failed.");
+}
+
 let authorizedAdmin = false;
+let busy = false;
 
 function updateAuthUI(user) {
   authorizedAdmin = Boolean(
@@ -298,27 +320,62 @@ function updateAuthUI(user) {
   logoutButton.hidden = !user;
   loginForm.hidden = authorizedAdmin;
 
-  if (!user) {
-    statusBox.textContent = "Please sign in first.";
-  } else if (!authorizedAdmin) {
+  if (authorizedAdmin) {
+    $("signedIn").textContent =
+      "Signed in as verified admin: " + user.email;
     statusBox.textContent =
-      "Access denied. Use the verified admin account.";
+      "Admin signed in. Review the topics, then import drafts.";
+    renderPreview();
+  } else if (user) {
+    statusBox.textContent =
+      "Access denied. Use the configured, verified admin account.";
   } else {
-    statusBox.textContent =
-      "Admin signed in. Select a course. Review the official syllabus before importing.";
+    statusBox.textContent = "Please sign in first.";
+    preview.replaceChildren();
   }
 }
 
 onAuthStateChanged(auth, updateAuthUI);
 
+function renderPreview() {
+  preview.replaceChildren();
+
+  for (const unit of units) {
+    const article = document.createElement("article");
+    article.className = "unit";
+
+    const heading = document.createElement("h2");
+    heading.textContent = unit.title + " — " + unit.marks + " marks";
+    article.appendChild(heading);
+
+    const list = document.createElement("ul");
+    for (const topic of unit.topics) {
+      const li = document.createElement("li");
+      li.textContent = topic;
+      list.appendChild(li);
+    }
+
+    article.appendChild(list);
+    preview.appendChild(article);
+  }
+
+  const total = document.createElement("p");
+  total.className = "note";
+  total.textContent = "Total: " + totalMarks + " marks. Status: pending_review.";
+  preview.appendChild(total);
+}
+
 loginForm.addEventListener("submit", async event => {
   event.preventDefault();
+
+  if (busy) return;
+  busy = true;
   loginButton.disabled = true;
   statusBox.textContent = "Signing in...";
 
   try {
-    const email = document.getElementById("email").value.trim();
-    const password = document.getElementById("password").value;
+    const email = $("email").value.trim();
+    const password = $("password").value;
 
     if (email !== ADMIN_EMAIL) {
       throw new Error("Use the configured admin email.");
@@ -327,10 +384,9 @@ loginForm.addEventListener("submit", async event => {
     await signInWithEmailAndPassword(auth, email, password);
   } catch (error) {
     statusBox.textContent =
-      error.code === "auth/invalid-api-key"
-        ? "Firebase API key error. Check the existing project configuration."
-        : error.message || "Sign-in failed.";
+      error.message || "Sign-in failed.";
   } finally {
+    busy = false;
     loginButton.disabled = false;
   }
 });
@@ -344,38 +400,46 @@ logoutButton.addEventListener("click", async () => {
   }
 });
 
+courseSelect.addEventListener("change", renderPreview);
+
 importButton.addEventListener("click", async () => {
-  if (!authorizedAdmin || !auth.currentUser?.emailVerified ||
-      auth.currentUser?.email !== ADMIN_EMAIL) {
+  const user = auth.currentUser;
+
+  if (
+    !authorizedAdmin ||
+    !user ||
+    user.email !== ADMIN_EMAIL ||
+    !user.emailVerified
+  ) {
     statusBox.textContent = "Verified admin login is required.";
     return;
   }
 
-  const course = courses[courseSelect.value];
+  if (busy) return;
 
+  const course = courses[courseSelect.value];
   if (!course) {
-    statusBox.textContent = "Please select a valid course.";
+    statusBox.textContent = "Choose a valid course.";
     return;
   }
 
   const confirmed = confirm(
-    "Import/update 7 prepared units for " +
+    "Import/update the 7 prepared units for " +
     course.courseName + " (" + course.subjectCode + ")?\n\n" +
-    "Destination: syllabusDrafts/" + course.parentId +
-    "\n\nAll content will remain pending review. " +
-    "Check the prepared topics against the official syllabus first."
+    "Firestore path: syllabusDrafts/" + course.parentId +
+    "\n\nThe draft will remain pending_review. " +
+    "Importing does not approve or publish it."
   );
 
   if (!confirmed) return;
 
+  busy = true;
   importButton.disabled = true;
   courseSelect.disabled = true;
   statusBox.textContent = "Importing " + course.courseName + "...";
 
   try {
-    const parentRef = doc(
-      db, "syllabusDrafts", course.parentId
-    );
+    const parentRef = doc(db, "syllabusDrafts", course.parentId);
 
     await setDoc(parentRef, {
       title: course.title,
@@ -384,10 +448,10 @@ importButton.addEventListener("click", async () => {
       subject: "Mathematics",
       courseName: course.courseName,
       subjectCode: course.subjectCode,
-      year: "2026–27",
+      year: "2026-27",
       status: "pending_review",
       chapters: units.length,
-      verified: 0,
+      verified: false,
       source: SOURCE_URL,
       importUpdatedAt: serverTimestamp()
     }, { merge: true });
@@ -415,17 +479,18 @@ importButton.addEventListener("click", async () => {
     statusBox.textContent =
       "Import completed for " + course.courseName +
       " (" + course.subjectCode + ").\n\n" +
-      units.length + " units saved as pending_review.\n" +
-      "Firestore path: syllabusDrafts/" + course.parentId +
-      "\n\nNext: check every topic against the official PDF. " +
-      "This importer does not publish or verify the syllabus.";
+      "7 units saved as pending_review.\n" +
+      "Total marks: " + totalMarks + ".\n" +
+      "Draft path: syllabusDrafts/" + course.parentId +
+      "\n\nThis does not approve or publish the syllabus.";
 
   } catch (error) {
     statusBox.textContent =
       "Import failed: " + (error.message || "Unknown error") +
-      "\n\nCheck Firestore security rules and Firebase configuration. " +
-      "If the import stopped partway through, inspect Firestore before retrying.";
+      "\n\nCheck Firestore security rules and inspect the draft " +
+      "before retrying in case an import stopped partway through.";
   } finally {
+    busy = false;
     importButton.disabled = false;
     courseSelect.disabled = false;
   }
